@@ -157,6 +157,35 @@ const saveStorage = async () => {
 // Load storage at startup
 loadStorage();
 
+/**
+ * `/api/gemini-key`
+ * Returns the Gemini API key for client-side use
+ */
+const geminiKeyRoute: http.RequestListener = (req, res) => {
+  try {
+    if (req.method !== "GET") {
+      res.writeHead(405);
+      res.end("Method Not Allowed");
+      return;
+    }
+    
+    const apiKey = process.env["GEMINI_API_KEY"];
+    
+    if (!apiKey) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: "Gemini API key not configured" }));
+      return;
+    }
+    
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ apiKey }));
+  } catch (error) {
+    console.error("Error in Gemini key route:", error);
+    res.writeHead(500);
+    res.end(JSON.stringify({ error: "Internal server error" }));
+  }
+};
+
 // Environment Variable interpolation helper with trusted host whitelist
 function interpolateEnvVars(value: string, host: string): string {
   // Replace env vars if they match pattern "${ENV_VAR}"
@@ -208,6 +237,9 @@ const server = http.createServer(
     } else if (req.url?.startsWith("/api/proxy/")) {
       // Handle proxy requests
       proxyRoute(req, res);
+    } else if (req.url === "/api/gemini-key") {
+      // Handle Gemini API key requests
+      geminiKeyRoute(req, res);
     } else {
       // Handle static file requests
       staticRoute(req, res);
@@ -296,10 +328,15 @@ const proxyRoute: http.RequestListener = (req, res) => {
     return;
   }
   try {
+    console.log("Processing proxy request:", req.url);
+    
     // Set up the request to target resource
     const proxyUrl = new URL(
       decodeURIComponent(req.url.replace("/api/proxy/", ""))
     );
+    
+    console.log("Proxy target:", proxyUrl.toString());
+    console.log("Proxy host:", proxyUrl.host);
 
     // Create a filtered copy of the headers
     const filteredHeaders: Record<string, string> = Object.fromEntries(
@@ -326,17 +363,49 @@ const proxyRoute: http.RequestListener = (req, res) => {
         return [[key, interpolatedValue]];
       })
     );
+    
+    console.log("Request headers (after filtering):", JSON.stringify(filteredHeaders, null, 2));
 
     const options = {
       method: req.method,
       headers: filteredHeaders,
     };
+    
+    console.log("Proxy request options:", JSON.stringify(options, null, 2));
 
+    // Collect request body chunks for logging
+    const requestBodyChunks: Buffer[] = [];
+    req.on('data', (chunk) => {
+        requestBodyChunks.push(chunk);
+    });
+    
     // Forward the request to the proxy resource and pipe it back to the original response
     const proxyReq = https.request(
       interpolateEnvVars(proxyUrl.toString(), proxyUrl.host),
       options,
       (proxyRes) => {
+        console.log("Proxy response status:", proxyRes.statusCode);
+        console.log("Proxy response headers:", JSON.stringify(proxyRes.headers, null, 2));
+        
+        // Get the content type for logging
+        const contentType = proxyRes.headers['content-type'] || '';
+        
+        // Create a response body collector if it's a text-based response
+        let responseBody = '';
+        if (contentType.includes('json') || contentType.includes('text')) {
+          proxyRes.on('data', (chunk) => {
+            // Only collect a reasonable amount to avoid memory issues
+            if (responseBody.length < 2000) {
+              responseBody += chunk.toString();
+            }
+          });
+          
+          proxyRes.on('end', () => {
+            console.log("Proxy response preview (truncated):", 
+              responseBody.length > 1000 ? responseBody.substring(0, 1000) + '...' : responseBody);
+          });
+        }
+        
         res.writeHead(proxyRes.statusCode ?? 200, proxyRes.headers);
         proxyRes.pipe(res);
       }
@@ -347,6 +416,24 @@ const proxyRoute: http.RequestListener = (req, res) => {
       console.error("Proxy connection error:", error);
       res.writeHead(500);
       res.end("Proxy connection error");
+    });
+
+    // Log request body before sending (if it exists)
+    req.on('end', () => {
+      if (requestBodyChunks.length > 0) {
+        const body = Buffer.concat(requestBodyChunks).toString();
+        try {
+          // Try to parse as JSON for better formatting
+          const jsonBody = JSON.parse(body);
+          console.log("Request body (JSON):", JSON.stringify(jsonBody, null, 2));
+        } catch (e) {
+          // Not JSON, log as string (truncated if too large)
+          console.log("Request body (string preview):", 
+            body.length > 1000 ? body.substring(0, 1000) + '...' : body);
+        }
+      } else {
+        console.log("Request has no body");
+      }
     });
 
     // Forward the original request body to the proxy request

@@ -1,27 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Node Simple Server: AI Prototype Example</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Home Design Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-  <h1>AI Prototype Example</h1>
-  <form id="search">
-    <select id="provider">
-      <option value="openai">OpenAI GPT</option>
-      <option value="anthropic">Anthropic Claude</option>
-      <option value="google">Google Gemini</option>
-    </select>
-    <input id="query" type="text" />
-  </form>
-  <div id="answer"></div>
-</body>
-<button id="share">Share</button>
-<script type="module">
-  import "/main.js";
-</script>
+    <div class="app-container">
 
+        <div class="chat-column">
+            <div id="conversation-area" class="chat-card">
+                </div>
+            <div id="chat-input-area" class="chat-input-card">
+                <form id="chat-form">
+                    <input type="file" id="room-photo-input" accept="image/*" style="display: none;">
+                    <button type="button" id="upload-btn" class="icon-btn" aria-label="Upload room photo">
+                        📎 </button>
+                    <span id="upload-checkmark" style="display:none;">✅</span>
+                    <input type="text" id="query-input" placeholder="Describe your vision..." aria-label="Describe your vision">
+                    <button type="submit" id="submit-btn" aria-label="Send message">
+                        ➤ </button>
+                </form>
+                <div id="error-display" class="error-text"></div>
+            </div>
+        </div>
+
+        <div class="image-column">
+            <div id="image-display-area" class="image-card">
+                <div id="remodeled-images-container">
+                    <!-- Images will appear here, including the original with "Start from scratch" button -->
+                </div>
+                <p id="remodel-placeholder">Upload a room photo to begin. Your original and AI-generated visualizations will appear here.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/main.js"></script>
+</body>
 </html>

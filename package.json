@@ -5,8 +5,8 @@
   "main": "server.ts",
   "type": "module",
   "scripts": {
-    "start": "node server.ts",
-    "dev": "node --env-file=.env server.ts",
+    "start": "node --loader ts-node/esm server.ts",
+    "dev": "node --loader ts-node/esm --env-file=.env server.ts",
     "deploy": "scripts/deploy.sh",
     "undeploy": "scripts/undeploy.sh"
   },
@@ -17,6 +17,8 @@
     "node": "23.11.0"
   },
   "devDependencies": {
-    "@types/node": "^22.15.3"
+    "@types/node": "^22.15.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
   }
 }
