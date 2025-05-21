@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node --loader ts-node/esm server.ts",
-    "dev": "node --loader ts-node/esm --env-file=.env server.ts",
+    "dev": "node --loader ts-node/esm -r dotenv/config server.ts",
     "deploy": "scripts/deploy.sh",
     "undeploy": "scripts/undeploy.sh"
   },
@@ -20,5 +20,10 @@
     "@types/node": "^22.15.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@lustre/sdk": "^3.23.0",
+    "dotenv": "^16.5.0",
+    "eventemitter3": "^5.0.1"
   }
 }

@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import https from "https";
 import crypto from "crypto";
+import 'dotenv/config'; // Load environment variables from .env
 
 // Port 8080 is commonly supported for cloud deployments
 const port = 8080;
@@ -159,7 +160,7 @@ loadStorage();
 
 /**
  * `/api/gemini-key`
- * Returns the Gemini API key for client-side use
+ * Returns the Gemini API key and model configuration for client-side use
  */
 const geminiKeyRoute: http.RequestListener = (req, res) => {
   try {
@@ -170,6 +171,8 @@ const geminiKeyRoute: http.RequestListener = (req, res) => {
     }
     
     const apiKey = process.env["GEMINI_API_KEY"];
+    const imageModelId = process.env["GEMINI_IMAGE_MODEL"] || "gemini-2.0-flash-preview-image-generation";
+    const orchestratorModelId = process.env["GEMINI_ORCHESTRATOR_MODEL"] || "gemini-2.5-flash-preview-04-17";
     
     if (!apiKey) {
       res.writeHead(500);
@@ -178,9 +181,42 @@ const geminiKeyRoute: http.RequestListener = (req, res) => {
     }
     
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ apiKey }));
+    res.end(JSON.stringify({ 
+      apiKey,
+      imageModelId,
+      orchestratorModelId
+    }));
   } catch (error) {
     console.error("Error in Gemini key route:", error);
+    res.writeHead(500);
+    res.end(JSON.stringify({ error: "Internal server error" }));
+  }
+};
+
+/**
+ * `/api/vetted-key`
+ * Returns the Vetted (Lustre) API key for client-side use
+ */
+const vettedKeyRoute: http.RequestListener = (req, res) => {
+  try {
+    if (req.method !== "GET") {
+      res.writeHead(405);
+      res.end("Method Not Allowed");
+      return;
+    }
+    
+    const apiKey = process.env["VETTED_API_KEY"];
+    
+    if (!apiKey) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: "Vetted API key not configured" }));
+      return;
+    }
+    
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ apiKey }));
+  } catch (error) {
+    console.error("Error in Vetted key route:", error);
     res.writeHead(500);
     res.end(JSON.stringify({ error: "Internal server error" }));
   }
@@ -240,6 +276,9 @@ const server = http.createServer(
     } else if (req.url === "/api/gemini-key") {
       // Handle Gemini API key requests
       geminiKeyRoute(req, res);
+    } else if (req.url === "/api/vetted-key") {
+      // Handle Vetted API key requests
+      vettedKeyRoute(req, res);
     } else {
       // Handle static file requests
       staticRoute(req, res);

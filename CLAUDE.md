@@ -392,3 +392,116 @@ The next phase will involve:
    - Removed artificial limits on design iterations
    - Eliminated error messages when Gemini doesn't generate expected images
    - Simplified logic to let the LLM naturally decide between text suggestions and visual output
+
+### May 25, 2024 - Code Refactoring and Product Recommendations Integration
+
+1. **Complete Code Refactoring**:
+   - Implemented object-oriented architecture with dedicated state management objects
+     - Created `imageState` object to handle all image-related state (original, remodels, selection)
+     - Created `conversationManager` object for message history and API formatting
+   - Reorganized code into logical sections for better maintainability
+     - Constants, DOM Elements, State Management, UI Functions, etc.
+   - Improved function organization with single-responsibility principle
+   - Enhanced error handling patterns for more robustness
+   - Added comprehensive logging for debugging
+
+2. **Function Calling for Product Recommendations**:
+   - Implemented Gemini function calling to enable real product searches
+   - Added `findSimilarProducts` function definition to handle shopping queries
+   - Integrated with Vetted API for product search and recommendations
+   - Created UI components to display matched products with images and details
+   - Added "View Product" buttons linking to purchase options
+   - Updated system prompt with guidelines for when to use the function
+   
+3. **Enhanced Image Selection System**:
+   - Redesigned selection logic to better handle state between image versions
+   - Added improved visual indicators for selections
+   - Implemented clear transitions between different image states
+   - Enhanced input field context indicators based on current selection
+
+4. **API Integration Improvements**:
+   - Added Vetted API key handling in the server
+   - Created dedicated API endpoint for secure key retrieval
+   - Added proper MIME type handling for image encoding/decoding
+   - Improved request/response handling for function calls
+
+5. **User Experience Improvements**:
+   - Added product recommendations grid with categories based on design elements
+   - Enhanced error handling for API failures
+   - Implemented loading indicators during product searches
+   - Added responsive styling for product recommendations
+   - Improved visual consistency across all components
+
+### May 26, 2024 - Orchestrator Architecture Implementation
+
+1. **Multi-Model Orchestration System**:
+   - Implemented an orchestrator architecture using two specialized AI models
+   - Added `gemini-2.5-flash-preview-04-17` as the main orchestrator model for conversation management
+   - Kept `gemini-2.0-flash-preview-image-generation` for specialized image generation
+   - Created environment variable configuration for model selection
+   - Added support for dynamic model IDs through server API
+
+2. **Function Calling Architecture**:
+   - Implemented a robust function calling system for the orchestrator model
+   - Created two main functions: `generateImage` and `findSimilarProducts`
+   - Defined precise function schemas and parameter specifications
+   - Built handlers for each function with proper error handling and state management
+   - Added intelligent mapping between image IDs and actual images
+
+3. **Improved User Experience Flow**:
+   - Simplified conversation flow with smarter model handling
+   - Added incremental status updates during complex operations
+   - Enhanced error handling with more specific error messages
+   - Improved loading indicators for different function operations
+   - Better transition between conversation and product recommendations
+
+4. **Robust API Integration**:
+   - Created dedicated client functions for each model with specific formatting
+   - Enhanced message history management for multi-model interactions
+   - Improved parsing of different response formats from the API
+   - Added comprehensive logging for debugging
+   - Better error recovery with fallback options
+
+5. **Code Architecture Improvements**:
+   - Redesigned the codebase for better separation of concerns
+   - Created dedicated functions for specific operations
+   - Enhanced state management with clear propagation
+   - Improved function isolation and reduced side effects
+   - Added better type handling for API interactions
+
+### May 27, 2024 - Orchestrator Refinements and Product API Integration
+
+1. **Orchestrator Response Handling Improvements**:
+   - Fixed function call detection in the Gemini API responses
+   - Enhanced the response parser to handle multiple function call formats
+   - Added more comprehensive logging for debugging
+   - Improved error handling and recovery for API interactions
+   - Fixed edge cases in function argument parsing
+
+2. **Vetted API Integration**:
+   - Implemented full integration with the Vetted product API
+   - Added API key configuration in environment variables
+   - Enhanced search parameters for better product matching
+   - Implemented proper error handling for API requests
+   - Added detailed logging for API interactions
+
+3. **Product Display Enhancements**:
+   - Updated product card components to handle various API response formats
+   - Added support for different product image and URL field naming conventions
+   - Enhanced price display to handle multiple price formats
+   - Added store/brand information to product cards
+   - Improved responsive styling for product recommendations
+
+4. **Environment Configuration**:
+   - Updated server to use dotenv for environment variable loading
+   - Modified package scripts for better compatibility
+   - Added proper configuration for model IDs in environment variables
+   - Integrated necessary dependencies like eventemitter3
+   - Enhanced server API endpoint error handling
+
+5. **Error Recovery Improvements**:
+   - Added more graceful error handling for API failures
+   - Enhanced debugging information for API errors
+   - Improved validation of API responses
+   - Added better user feedback for error states
+   - Enhanced resilience against malformed API responses
