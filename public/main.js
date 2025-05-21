@@ -13,18 +13,40 @@ Your primary goal is to help the user visualize changes to their room based on a
 
 You have access to two key functions:
 1. "generateImage" - Generates a modified image of a room based on specific instructions
-2. "findSimilarProducts" - Finds real products that match design elements in the room
+2. "findSimilarProducts" - Finds real products that match design elements in the room, with optional image analysis to identify changed items
 
-You're the decision maker for when to use these functions based on user intent. You should:
-- Use generateImage when users want to visualize changes to their room
-- Use findSimilarProducts when users want to purchase items shown in their design
+FUNCTION SELECTION IS CRITICAL - YOU MUST CHOOSE BASED ON USER INTENT:
+
+Shopping/Product Intent (use findSimilarProducts):
+- "Where can I buy this table?"
+- "Find products similar to this chair"
+- "How much would these cost?"
+- "I want to purchase these items"
+- "Find more like this but in bronze"
+- "Shop for similar items"
+- "Show me where to buy this"
+- Any message about buying, purchasing, shopping, pricing, or finding similar products
+
+Design Visualization Intent (use generateImage):
+- "Change the wall color to blue"
+- "Add a plant in the corner"
+- "Update the furniture arrangement"
+- "Make the sofa larger"
+- "Remove the coffee table"
+- "Show me how it looks with wood floors"
+- Any message about changing, modifying, adding, or removing design elements
 
 The user will upload photos of rooms they want to redesign. You'll help them through the process by:
 1. Understanding their design preferences and goals
 2. Suggesting specific changes based on their input
-3. Calling generateImage to visualize these changes
+3. ALWAYS calling generateImage to visualize these changes (for every message with an image)
 4. Refining designs through conversation
 5. Using findSimilarProducts when they're ready to shop
+
+When the user asks to purchase items or find products that match their design:
+1. If they specifically mention items ("Where can I buy this lamp?"), include these items in your function call
+2. If they want to shop but don't specify items ("What items did we change?" or "What can I buy?"), use the findSimilarProducts function with options.analyzeImage=true (IMPORTANT: set this to true) to automatically identify changed items
+3. CRITICAL: When users ask about changes or want to see what items were modified, you MUST use the analyzeImage option
 
 Important guidelines:
 - Always maintain the room's exact dimensions, perspective, and layout in images
@@ -81,23 +103,62 @@ Your primary goal is to help the user visualize changes to their room based on a
 - As the design stabilizes, you can help identify elements that would need to be purchased
 - When the user seems satisfied with the overall design, you can offer to create shopping queries for the new elements
 
-### Product Recommendations with Function Calling
+### Product Recommendations and Visual Analysis
 - When the user expresses interest in purchasing items from their design, use the findSimilarProducts function
-- IMPORTANT: Only use this function when the user is ready to shop or explicitly asks for product recommendations
-- The findSimilarProducts function takes an array of items with these properties:
-  * name: A short, descriptive name for the item (e.g., "Coffee Table", "Floor Lamp")
-  * description: A detailed description of the item's appearance and style
-  * google_shopping_query: An optimized search query to find similar products
-- Include 3-5 of the most important or prominent items in the design
-- Make search queries specific enough to find visually similar items (e.g., "mid-century modern oak coffee table round" vs. just "coffee table")
-- The function will display real product recommendations that match the design elements
+- The function will automatically analyze the latest design image to identify what's been changed
+- You do not need to specify the items manually - the function will detect them visually
+- The findSimilarProducts function takes these parameters:
+  * itemDescriptions: (Optional) Array of specific item descriptions to focus on (e.g., ["blue sofa", "wooden table"])
+  * context: (Optional) Additional guidance for the analysis (e.g., "Focus on the living room changes")
+- The visual analysis will:
+  1. Compare the original room image with the latest design
+  2. Identify exactly which items have been changed or added
+  3. Generate optimized search queries for each changed item
+  4. Find real products that match those items
+- This provides a seamless way to connect the user's design with purchasable products
+
+### Product Search through Visual Analysis
+- When the user wants to find products for their design changes, use the findSimilarProducts function
+- This function will automatically analyze the changes between the original image and the latest remodel, **based on the conversation history**. Pay special attention to when the user starts from scratch or references an older version.
+- The function will identify exactly what items have been modified in the design based on the conversation so far (e.g., if the user asked 'make the table black and the light fixture blue' in one message and in a previous one that still refers to the same room remodel 'add a bearskin rug', the items to analyze are ONLY the new table, light fixture, and rug) and find matching products
+- The simplest way to call the function is:
+
+  findSimilarProducts({})
+
+- If the user is asking about specific items, you can include those in the call:
+
+  findSimilarProducts({ 
+    itemDescriptions: ["blue L-shaped leather couch", "round oak coffee table with 3 legs"], 
+    context: "Describe the items that were changed in the interaction so far" 
+  })
+
+- Always use this function whenever:
+  * The user asks about buying or shopping for items
+  * The user wants to see products related to their design
+  * The user wants to know what items have changed
+  * The user asks "what can I buy" or "where can I get these"
+
+- The chat history analysis will identify exactly which items have been changed in the design (pay special attention to when the user starts from scratch or references an older version)
+- It will analyze only the modified elements, not the entire room
 
 ### When to Use the Product Recommendations Function
 - When the user says they love the design and want to know where to buy items
 - When the user asks "where can I find this lamp?" or similar shopping questions
 - When the user explicitly asks for product recommendations or shopping links
 - When the design is finalized and the conversation is shifting to implementation
-- DO NOT use the function prematurely - wait until the design is relatively stable
+- When the user wants to see a shopping list of all modifications made
+- DO NOT use the function prematurely - wait until the design is relatively stable or you're asked for it
+
+### Parallel Function Calling Support
+- You can make MULTIPLE separate findSimilarProducts function calls in a single response
+- Use this when the user wants to search for different types of items at once
+- For example, if they ask about both a "black table" and "blue chairs", make two separate parallel function calls
+- Each call should focus on a different category of item to ensure specific results
+- This is more efficient than combining all items in a single search
+- Example of multiple calls:
+  1. First call: findSimilarProducts with items similar to "round oak coffee table with 3 legs", based on the visual analysis of the items that were changed in the conversations so far
+  2. Second call: findSimilarProducts with items related to "blue L-shaped leather couch", based on the visual analysis of the items that were changed in the conversations so far
+  3. Third call: findSimilarProducts with items related to "black mesh office chair with headrest", based on the visual analysis of the items that were changed in the conversations so far
 
 Always ensure your responses maintain the integrity of their original room while making the requested changes.`;
 
@@ -123,34 +184,23 @@ const ORCHESTRATOR_FUNCTION_DEFINITIONS = [
     },
     {
         name: "findSimilarProducts",
-        description: "Find real products matching the user's design elements",
+        description: "Analyze current image to identify changes and find real products matching the modified items. If specific items are known, provide them directly. If not, the system will use image analysis to identify changes.",
         parameters: {
             type: "object",
             properties: {
-                items: {
+                itemDescriptions: {
                     type: "array",
-                    description: "Array of design elements to find similar products for",
+                    description: "Specific product descriptions (e.g., 'black round table', 'blue pendant light') that have been identified in the room design, to be used for product searches",
                     items: {
-                        type: "object",
-                        properties: {
-                            name: {
-                                type: "string",
-                                description: "Name of the design element (e.g., 'Coffee Table')"
-                            },
-                            description: {
-                                type: "string",
-                                description: "Detailed description of the element"
-                            },
-                            google_shopping_query: {
-                                type: "string",
-                                description: "Optimized search query for finding similar products"
-                            }
-                        },
-                        required: ["name", "google_shopping_query"]
+                        type: "string"
                     }
+                },
+                context: {
+                    type: "string",
+                    description: "Additional context to guide the product search and analysis"
                 }
             },
-            required: ["items"]
+            required: []
         }
     }
 ];
@@ -503,16 +553,64 @@ function buildOrchestratorRequestBody(formattedHistory, userMessage, currentImag
     // Add user message text
     currentMessageParts.push({ text: userMessage });
     
+    // Flag to track if an image is included in this message
+    let imageIncluded = false;
+    
     // Add image to the message if provided
     if (currentImage) {
+        imageIncluded = true;
         const base64Data = currentImage.replace(/^data:image\/[a-z]+;base64,/, "");
         const imgMimeType = currentImage.match(/^data:(image\/[a-z]+);base64,/)?.[1] || 'image/jpeg';
         currentMessageParts.push({ inline_data: { mime_type: imgMimeType, data: base64Data } });
     }
     
+    // Check if this is likely a purchase/product search request
+    const isPurchaseRequest = 
+        userMessage.toLowerCase().includes("buy") || 
+        userMessage.toLowerCase().includes("purchase") ||
+        userMessage.toLowerCase().includes("find similar product") ||
+        userMessage.toLowerCase().includes("find more like") ||
+        userMessage.toLowerCase().includes("shop") ||
+        userMessage.toLowerCase().includes("where can i get") ||
+        userMessage.toLowerCase().includes("how much") ||
+        userMessage.toLowerCase().includes("cost") ||
+        userMessage.toLowerCase().includes("price");
+        
+    // For non-purchase requests with images, gently suggest image generation
+    if (imageIncluded && !isPurchaseRequest) {
+        // Only if it seems like a design request, suggest image generation
+        if (userMessage.toLowerCase().includes("change") || 
+            userMessage.toLowerCase().includes("update") ||
+            userMessage.toLowerCase().includes("modify") ||
+            userMessage.toLowerCase().includes("redesign") ||
+            userMessage.toLowerCase().includes("make it") ||
+            userMessage.toLowerCase().includes("add") ||
+            userMessage.toLowerCase().includes("remove")) {
+            
+            currentMessageParts.push({ 
+                text: "\n\nI'd like to see a visualization if my request is about changing the room design."
+            });
+        }
+    }
+    
+    // Log the function definitions being sent
+    console.log("Sending function definitions:", JSON.stringify(ORCHESTRATOR_FUNCTION_DEFINITIONS));
+    
+    // Create a fresh copy of the function definitions to avoid any caching issues
+    const functionDefinitions = JSON.parse(JSON.stringify(ORCHESTRATOR_FUNCTION_DEFINITIONS));
+    
+    // For purchase requests, add a stronger hint to use findSimilarProducts
+    if (isPurchaseRequest) {
+        // Add at the end of the message for recency bias
+        currentMessageParts.push({
+            text: "\n\nCRITICAL INSTRUCTION: Please DO NOT generate an image for this message. " +
+                  "Since I'm asking about products/shopping, use the findSimilarProducts function instead."
+        });
+    }
+    
     return {
         contents: [...formattedHistory, { parts: currentMessageParts, role: "user" }],
-        tools: [{ function_declarations: ORCHESTRATOR_FUNCTION_DEFINITIONS }],
+        tools: [{ function_declarations: functionDefinitions }],
         generationConfig: {
             temperature: 0.0,
             topK: 32,
@@ -649,6 +747,12 @@ async function callOrchestratorModel(userMessage, conversationHistory, currentIm
         // Build the request body
         const requestBody = buildOrchestratorRequestBody(formattedHistory, userMessage, currentImage);
         
+        // Log the full request for debugging
+        console.log("Orchestrator API request:", JSON.stringify({
+            ...requestBody,
+            contents: "[[CONTENTS ABBREVIATED]]" // Don't log full contents with images
+        }));
+        
         // Call the Gemini API with the orchestrator model
         const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${ORCHESTRATOR_MODEL}:generateContent?key=${apiKey}`;
         
@@ -664,6 +768,119 @@ async function callOrchestratorModel(userMessage, conversationHistory, currentIm
         }
         
         const responseData = await response.json();
+        
+        // If we sent an image but didn't get any function calls, try a second attempt with explicit instructions
+        if (currentImage && 
+            (!responseData?.candidates?.[0]?.content?.functionCalls || 
+             responseData.candidates[0].content.functionCalls.length === 0) &&
+            (!responseData?.candidates?.[0]?.content?.parts?.some(p => p.functionCall))) {
+            
+            console.log("WARNING: First attempt didn't return function calls with image. Trying backup approach...");
+            
+            // Create a modified request with stronger instructions in the message
+            const backupParts = [...requestBody.contents[requestBody.contents.length - 1].parts];
+            
+            // Add very explicit instructions as the last part
+            backupParts.push({ 
+                text: "\n\nCRITICAL: You MUST use the generateImage function to generate an image based on my request. This is required and not optional. Call the generateImage function with 'instructions' containing my request and 'imageId' set to 'original' or 'latest'."
+            });
+            
+            const backupContents = [...requestBody.contents.slice(0, -1), {
+                role: "user",
+                parts: backupParts
+            }];
+            
+            const backupRequest = {
+                ...requestBody,
+                contents: backupContents,
+                generationConfig: {
+                    ...requestBody.generationConfig,
+                    temperature: 0.1 // Slight change to temperature 
+                }
+            };
+            
+            console.log("Backup request:", JSON.stringify({
+                ...backupRequest,
+                contents: "[[CONTENTS ABBREVIATED]]" // Don't log full contents with images
+            }));
+            
+            // Try again with the modified request
+            const backupResponse = await fetch(apiEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(backupRequest)
+            });
+            
+            if (backupResponse.ok) {
+                const backupResponseData = await backupResponse.json();
+                // Only use backup if it contains function calls
+                if ((backupResponseData?.candidates?.[0]?.content?.functionCalls?.length > 0) ||
+                    (backupResponseData?.candidates?.[0]?.content?.parts?.some(p => p.functionCall))) {
+                    console.log("Backup approach successful! Using backup response.");
+                    return parseOrchestratorResponse(backupResponseData);
+                } else {
+                    console.log("Backup approach also failed to generate function calls.");
+                    
+                    // Last resort: Call the image generation model directly
+                    try {
+                        console.log("Attempting final fallback: Direct call to image generation model");
+                        
+                        // Extract the user's message text
+                        const userText = backupParts.find(part => part.text && !part.text.includes("CRITICAL"))?.text || userMessage;
+                        
+                        // Call the image generation model directly
+                        const imageResult = await callImageGenerationModel(currentImage, userText);
+                        
+                        if (imageResult.image) {
+                            console.log("Direct image generation successful!");
+                            
+                            // Create synthetic function call response
+                            return {
+                                text: responseData.candidates?.[0]?.content?.parts?.find(p => p.text)?.text || 
+                                      "Here's the visualization based on your request:",
+                                functionCalls: [{
+                                    name: "generateImage",
+                                    args: {
+                                        imageId: "original",
+                                        instructions: userText
+                                    },
+                                    result: imageResult
+                                }]
+                            };
+                        }
+                    } catch (directError) {
+                        console.error("Direct image generation also failed:", directError);
+                    }
+                }
+            } else {
+                console.log("Backup request failed with status:", backupResponse.status);
+                
+                // Try direct image generation here too if the backup request failed
+                try {
+                    console.log("Attempting final fallback after backup request failure");
+                    const imageResult = await callImageGenerationModel(currentImage, userMessage);
+                    
+                    if (imageResult.image) {
+                        console.log("Direct image generation successful!");
+                        return {
+                            text: responseData.candidates?.[0]?.content?.parts?.find(p => p.text)?.text || 
+                                  "Here's the visualization based on your request:",
+                            functionCalls: [{
+                                name: "generateImage",
+                                args: {
+                                    imageId: "original",
+                                    instructions: userMessage
+                                },
+                                result: imageResult
+                            }]
+                        };
+                    }
+                } catch (directError) {
+                    console.error("Direct image generation also failed:", directError);
+                }
+            }
+        }
+        
         return parseOrchestratorResponse(responseData);
     } catch (error) {
         console.error("Error calling orchestrator model:", error);
@@ -753,16 +970,68 @@ const functionHandlers = {
     async findSimilarProducts(args) {
         console.log("Handling findSimilarProducts function call:", args);
         
-        // Extract items from arguments
-        let items = [];
-        if (args.items && Array.isArray(args.items)) {
-            items = args.items;
-        } else if (Array.isArray(args)) {
-            items = args;
+        // Extract any specific item descriptions the user is looking for
+        const itemDescriptions = args.itemDescriptions || [];
+        const context = args.context || "Focus on furniture and decor items that have been changed in the room design";
+        
+        // Verify we have images to analyze
+        if (!imageState.latestRemodel || !imageState.original) {
+            throw new Error("Need both original and modified room images for analysis.");
         }
         
-        if (items.length === 0) {
-            throw new Error("No product items provided for searching.");
+        // Add loading message
+        addMessageToConversation("Analyzing your design to identify changed items...", "ai", true);
+        
+        try {
+            // Always analyze the latest remodel with the original for comparison
+            let analysisContext = context;
+            
+            // If specific item descriptions were provided, include them in the context
+            if (itemDescriptions && itemDescriptions.length > 0) {
+                analysisContext = `${context}. Specifically look for these items: ${itemDescriptions.join(', ')}`;
+            }
+            
+            // Perform the image analysis
+            console.log("Analyzing image with context:", analysisContext);
+            const analyzedItems = await analyzeImageForProducts(
+                imageState.latestRemodel,
+                'room',
+                analysisContext,
+                imageState.original
+            );
+            
+            if (!analyzedItems || analyzedItems.length === 0) {
+                conversationArea.querySelectorAll('.loading-message').forEach(msg => msg.remove());
+                throw new Error("No changes were detected in the room design.");
+            }
+            
+            // Log the results
+            console.log(`Image analysis produced ${analyzedItems.length} items:`, analyzedItems);
+            
+            // Remove loading message
+            conversationArea.querySelectorAll('.loading-message').forEach(msg => msg.remove());
+            
+            // Add analysis results message
+            const itemNames = analyzedItems.map(item => item.name).join(', ');
+            addMessageToConversation(
+                `I've identified these changed items in your design: ${itemNames}. Let me find similar products you can purchase.`,
+                "ai"
+            );
+            conversationManager.addMessage(
+                "assistant", 
+                `I've identified these changed items in your design: ${itemNames}. Let me find similar products you can purchase.`
+            );
+            
+            // Call the Vetted API to find similar products for the analyzed items
+            await findProductsWithVettedApi(analyzedItems);
+            
+            return {
+                text: `Found product recommendations for ${analyzedItems.length} items.`
+            };
+        } catch (error) {
+            conversationArea.querySelectorAll('.loading-message').forEach(msg => msg.remove());
+            console.error("Error analyzing image for changes:", error);
+            throw new Error(`Could not analyze room design: ${error.message}`);
         }
         
         // Call the Vetted API to find similar products
@@ -778,12 +1047,14 @@ const functionHandlers = {
 async function processQueryWithOrchestrator(userText, currentImage) {
     try {
         console.log("Processing query with orchestrator model");
-        if (!currentImage) {
-            throw new Error("Image required for processing. Please upload a room photo first.");
+        
+        // Make sure we have at least an image context if needed
+        if (!currentImage && !imageState.original) {
+            throw new Error("Please upload a room photo first.");
         }
         
-        // Add a loading message
-        addMessageToConversation("Thinking about your request...", "ai", true);
+        // Add a simple loading message
+        addMessageToConversation("Processing your request...", "ai", true);
         
         // Call the orchestrator model
         const orchestratorResponse = await callOrchestratorModel(
@@ -797,28 +1068,115 @@ async function processQueryWithOrchestrator(userText, currentImage) {
         // Process any function calls
         let functionResults = [];
         if (orchestratorResponse.functionCalls && orchestratorResponse.functionCalls.length > 0) {
-            // Handle each function call sequentially
+            // Group function calls by type for better handling
+            const generateImageCalls = [];
+            const findProductsCalls = [];
+            
+            // Sort function calls by type
             for (const functionCall of orchestratorResponse.functionCalls) {
-                try {
-                    if (functionHandlers[functionCall.name]) {
-                        console.log(`Executing function: ${functionCall.name}`);
-                        addMessageToConversation(`Processing ${functionCall.name === 'generateImage' ? 'image generation' : 'product search'}...`, "ai", true);
-                        
-                        const result = await functionHandlers[functionCall.name](functionCall.args);
-                        functionResults.push({
-                            name: functionCall.name,
-                            result: result
+                if (functionCall.name === 'generateImage') {
+                    generateImageCalls.push(functionCall);
+                } else if (functionCall.name === 'findSimilarProducts') {
+                    // Always ensure correct format for findSimilarProducts
+                    // The new simplified function definition doesn't require specific formats
+                    const context = functionCall.args?.context || 
+                                 "Identify items that have been changed in the room design";
+                    
+                    // Extract any specific item descriptions that might be in various formats
+                    let itemDescriptions = [];
+                    
+                    if (Array.isArray(functionCall.args)) {
+                        // If it's just an array, assume those are the item descriptions
+                        itemDescriptions = functionCall.args.map(item => {
+                            if (typeof item === 'string') return item;
+                            if (typeof item === 'object' && item.name) return item.name;
+                            return JSON.stringify(item);
                         });
-                    } else {
-                        console.error(`Unknown function: ${functionCall.name}`);
+                    } else if (functionCall.args?.items && Array.isArray(functionCall.args.items)) {
+                        // Handle items as an array of objects
+                        itemDescriptions = functionCall.args.items.map(item => {
+                            if (typeof item === 'string') return item;
+                            if (typeof item === 'object' && item.name) return item.name;
+                            return JSON.stringify(item);
+                        });
+                    } else if (functionCall.args?.itemDescriptions && Array.isArray(functionCall.args.itemDescriptions)) {
+                        // Already in the right format
+                        itemDescriptions = functionCall.args.itemDescriptions;
                     }
-                } catch (error) {
-                    console.error(`Error executing function ${functionCall.name}:`, error);
+                    
+                    // Create standard format
+                    const fixedArgs = {
+                        itemDescriptions: itemDescriptions,
+                        context: context
+                    };
+                    
+                    // Replace the args with our standardized version
+                    functionCall.args = fixedArgs;
+                    console.log("Standardized function call args:", functionCall.args);
+                    
+                    findProductsCalls.push(functionCall);
+                } else {
+                    console.error(`Unknown function: ${functionCall.name}`);
+                }
+            }
+            
+            console.log(`Processing function calls: ${generateImageCalls.length} image generation and ${findProductsCalls.length} product searches`);
+            
+            // Execute generateImage calls first (usually just one, but could be multiple in future)
+            for (const generateImageCall of generateImageCalls) {
+                try {
+                    console.log(`Executing image generation function`);
+                    addMessageToConversation(`Processing image generation...`, "ai", true);
+                    
+                    const result = await functionHandlers.generateImage(generateImageCall.args);
                     functionResults.push({
-                        name: functionCall.name,
+                        name: 'generateImage',
+                        result: result
+                    });
+                } catch (error) {
+                    console.error(`Error executing generateImage function:`, error);
+                    functionResults.push({
+                        name: 'generateImage',
                         error: error.message
                     });
                 }
+            }
+            
+            // Execute findSimilarProducts calls in parallel (if multiple)
+            if (findProductsCalls.length > 0) {
+                addMessageToConversation(`Processing product search${findProductsCalls.length > 1 ? 'es' : ''}...`, "ai", true);
+                
+                // Create an array of promises for all product searches
+                const productSearchPromises = findProductsCalls.map(async (findProductsCall) => {
+                    try {
+                        // Check if this is an image analysis request
+                        const isImageAnalysis = findProductsCall.args.options?.analyzeImage === true;
+                        const itemCount = findProductsCall.args.items?.length || 0;
+                        
+                        if (isImageAnalysis) {
+                            console.log(`Executing product search with image analysis (${itemCount} initial items, will be augmented with analysis)`);
+                            console.log(`Analysis context: ${findProductsCall.args.options?.context || "No specific context provided"}`);
+                        } else {
+                            console.log(`Executing product search function for ${itemCount} items (no image analysis)`);
+                        }
+                        
+                        const result = await functionHandlers.findSimilarProducts(findProductsCall.args);
+                        return {
+                            name: 'findSimilarProducts',
+                            result: result
+                        };
+                    } catch (error) {
+                        console.error(`Error executing findSimilarProducts function:`, error);
+                        return {
+                            name: 'findSimilarProducts',
+                            error: error.message
+                        };
+                    }
+                });
+                
+                // Execute all product searches in parallel
+                const productResults = await Promise.all(productSearchPromises);
+                functionResults.push(...productResults);
             }
         }
         
@@ -855,16 +1213,31 @@ async function processQueryWithOrchestrator(userText, currentImage) {
 
 // --- Chat Form Submission & Response Handling ---
 function validateChatInputs(currentUserText) {
-    if (!imageState.original) {
+    // Always require text input
+    if (!currentUserText) {
+        errorDisplay.textContent = "Please enter a message.";
+        setTimeout(() => { errorDisplay.textContent = ""; }, 3000);
+        return false;
+    }
+    
+    // Check if this is a product search query that doesn't need an image
+    const isProductSearchQuery = 
+        currentUserText.toLowerCase().includes("find more products") || 
+        currentUserText.toLowerCase().includes("search for similar") ||
+        currentUserText.toLowerCase().includes("find similar products") ||
+        currentUserText.toLowerCase().includes("buy") ||
+        currentUserText.toLowerCase().includes("purchase") ||
+        currentUserText.toLowerCase().includes("shopping") ||
+        currentUserText.toLowerCase().includes("shop for") ||
+        currentUserText.toLowerCase().includes("where can i get");
+    
+    // For non-product searches, we need an original room image
+    if (!isProductSearchQuery && !imageState.original) {
         errorDisplay.textContent = "Please upload a room photo first.";
         setTimeout(() => { errorDisplay.textContent = ""; }, 3000);
         return false;
     }
-    if (!currentUserText) {
-        errorDisplay.textContent = "Please describe your desired changes.";
-        setTimeout(() => { errorDisplay.textContent = ""; }, 3000);
-        return false;
-    }
+    
     errorDisplay.textContent = "";
     return true;
 }
@@ -902,16 +1275,27 @@ chatForm.addEventListener("submit", async (event) => {
     clearWelcomeMessage();
 
     const { userTextForApi, displayMessage, isPastedImage } = prepareUserMessageForApi(rawUserText);
+    
+    // Get image data from state
     const imageToSend = imageState.getImageDataForApi();
+    
+    // Always include the image in the conversation context if we have one
     const imageToAttachInChat = imageState.getImageToAttachToUserMessageInChat();
-
-    if (!imageToSend) {
-        handleApiError(new Error("No image available to process. Please upload or select an image."));
-        return;
+    
+    // If we don't have any images yet, check if this is the first message
+    if (!imageState.original && !imageState.latestRemodel && !imageState.pasted) {
+        // Only require an image if we don't have one yet
+        if (!imageToAttachInChat) {
+            handleApiError(new Error("Please upload a room photo first."));
+            return;
+        }
     }
 
+    // Add user message to conversation (with image if it's a design query)
     addMessageToConversation(displayMessage, "user", false, false, imageToAttachInChat);
-    conversationManager.addMessage("user", userTextForApi, { inlineImage: imageToAttachInChat });
+    
+    // Store in conversation history with image if available
+    conversationManager.addMessage("user", userTextForApi, imageToAttachInChat ? { inlineImage: imageToAttachInChat } : {});
 
     queryInput.value = "";
     submitBtn.disabled = true;
@@ -923,6 +1307,8 @@ chatForm.addEventListener("submit", async (event) => {
         loadingMessage = "Processing your pasted image...";
     } else if (userTextForApi.startsWith("Starting from the original room:")) {
         loadingMessage = "Using your original room photo...";
+    } else if (userTextForApi.toLowerCase().includes("find more products similar")) {
+        loadingMessage = "Searching for similar products...";
     }
     addMessageToConversation(loadingMessage, "ai", true);
 
@@ -943,7 +1329,7 @@ chatForm.addEventListener("submit", async (event) => {
     }
 
     try {
-        // Process the query using the orchestrator
+        // Always send the current image context to the orchestrator
         await processQueryWithOrchestrator(userTextForApi, imageToSend);
     } catch (error) {
         handleApiError(error instanceof Error ? error : new Error(String(error)));
@@ -991,7 +1377,590 @@ function addMessageToConversation(text, role, isLoading = false, isError = false
     conversationArea.scrollTop = conversationArea.scrollHeight; // Auto-scroll
 }
 
+// --- Image Analysis and Product Search ---
+
+/**
+ * Analyzes an image using the Gemini vision model to extract detailed descriptions
+ * @param {string} imageData - Base64 encoded image data
+ * @param {string} analysisType - Type of analysis: 'product' or 'room'
+ * @param {string} context - Additional context for the analysis
+ * @param {string} originalImageData - Optional original image data for comparison
+ * @returns {Promise<Array>} - Array of item descriptions
+ */
+async function analyzeImageForProducts(imageData, analysisType = 'room', context = '', originalImageData = null) {
+    try {
+        console.log(`Starting image analysis for ${analysisType} with context: ${context.substring(0, 50)}...`);
+        
+        // Determine the appropriate prompt based on analysis type
+        let analysisPrompt = '';
+        if (analysisType === 'product') {
+            analysisPrompt = `
+                You are a visual product analyzer specialized in home furnishings and decor.
+                
+                *** RESPONSE FORMAT INSTRUCTIONS ***
+                Please respond with a detailed description of the product, focusing on providing specific details that would help find similar items.
+                
+                Include these details:
+                - Name: A specific name with details (e.g., "Mid-Century Modern Black Round Dining Table")
+                - Description: Include color, material, style, and distinctive features
+                - Shopping Query: A detailed search query to find similar products online
+                
+                Format your response as:
+                
+                Product Name: Black Wooden Dining Table
+                Description: Modern black round dining table with metal legs and a smooth surface, featuring mid-century design elements with tapered legs.
+                Shopping Query: modern black round wooden dining table metal legs mid-century
+                
+                *** ANALYSIS INSTRUCTIONS ***
+                Please analyze this product image in detail and provide a rich description of:
+                
+                1. The product type (e.g., chair, table, lamp)
+                2. The material(s) it's made from
+                3. The color and finish
+                4. The style (e.g., modern, traditional, mid-century)
+                5. Any distinctive design features
+                6. The approximate size/dimensions if apparent
+                
+                For each identified product, provide in your JSON:
+                - "name": A specific name for the item (e.g., "Black Wooden Dining Table")
+                - "description": Detailed description including color, material, style and distinctive features
+                - "google_shopping_query": A specific search query that would find similar real-world products
+                
+                REMEMBER: Focus on providing specific, detailed information that would help find similar products.
+                
+                Additional context: ${context}
+            `;
+        } else { // room analysis
+            analysisPrompt = `
+                You are a visual design analyzer specialized in interior design and home furnishings.
+                
+                *** RESPONSE FORMAT INSTRUCTIONS ***
+                Please respond with a detailed description of each item, focusing on providing specific details that would help find similar products.
+                
+                For each item mentioned in the context, provide:
+                - Name: A specific name with details (e.g., "Mid-Century Modern Black Round Dining Table")
+                - Description: Include color, material, style, and distinctive features
+                - Shopping Query: A detailed search query to find similar products online
+                
+                Format your response as a list with clear item separations. For example:
+                
+                Item 1: Black Round Dining Table
+                Description: Modern black round dining table with metal legs and a smooth surface.
+                Shopping Query: modern black round dining table metal legs
+                
+                Item 2: White Office Chair 
+                Description: Ergonomic white office chair with mesh back and adjustable height.
+                Shopping Query: ergonomic white office chair mesh
+                
+                
+                *** ANALYSIS INSTRUCTIONS ***
+                Please analyze this room image and identify ONLY the items that have DEFINITELY been modified or added during redesign.
+                
+                STRICT INSTRUCTIONS: Be extremely selective and primarily identify the changes based on the conversation history, but confirm by analyzing the before and after images (if provided)
+                
+                Focus EXCLUSIVELY on identifying CLEAR, DEFINITIVE changes from the original room design.
+                
+                For each identified change, provide in your JSON:
+                - "name": A specific name for the item (e.g., "Mid-Century Modern Gray Sofa" rather than just "Sofa")
+                - "description": Detailed description including color, material, style and distinctive features
+                - "google_shopping_query": A Google Shopping-optimized search query that would find similar real-world products
+                
+                              
+                REMEMBER: Focus on providing specific, detailed information that would help find similar products.
+                
+                IMPORTANT: Your ENTIRE RESPONSE must be this JSON array and nothing else.
+                If you don't find any changes in either the conversation history or the comparison of the before and after image (if provided), return an empty array: []
+                
+                Additional context: ${context}
+            `;
+            
+            // If we have both original and modified images, use a comparison prompt instead
+            if (originalImageData) {
+                analysisPrompt = `
+                    You are a visual comparison expert who identifies items in room designs. I've provided two versions of the same room:
+                    
+                    The FIRST image is the MODIFIED room design (the "after" image).
+                    The SECOND image is the ORIGINAL room (the "before" image).
+                    
+                    CRITICAL INSTRUCTION: You MUST identify and describe SPECIFIC ITEMS that appear in the context, REGARDLESS of whether they are new or changed.
+                    
+                    If specific items like "black round table" or "white office chairs" are mentioned in the context, you MUST include these in your response.
+                    
+                    The primary goal is to provide detailed descriptions of items mentioned in the context, using the images as reference.
+                    
+                    For items mentioned in the context, be especially detailed about:
+                    - Their appearance in the current ("after") image
+                    - Whether they appear to be new or changed from the original image
+                    - Their detailed characteristics (color, style, materials)
+                    
+                    If you cannot find an item explicitly mentioned in the context, still include it in your response
+                    using your best description based on what you can see in the images.
+                    
+                    For each item (especially those mentioned in the context), provide:
+                    - "name": A specific, detailed name for the item (e.g., "Mid-Century Modern Black Round Dining Table" rather than just "Table")
+                    - "description": Thorough description including color, material, style and distinctive features
+                    - "google_shopping_query": A specific, detailed search query that would find this exact item
+                    - "change_type": Either "added" (completely new), "replaced" (different version of same item), or "unchanged"
+                    
+                    *** RESPONSE FORMAT INSTRUCTIONS ***
+                    Please respond with a detailed description of each item, focusing on providing specific details that would help find similar products.
+                    
+                    For each item mentioned in the context, provide:
+                    - Name: A specific name with details (e.g., "Mid-Century Modern Black Round Dining Table")
+                    - Description: Include color, material, style, and distinctive features
+                    - Shopping Query: A detailed search query to find similar products online
+                    - Change Type: Indicate whether the item is "added", "replaced", or "unchanged"
+                    
+                    Format your response as a list with clear item separations. For example:
+                    
+                    Item 1: Black Round Dining Table
+                    Description: Modern black round dining table with metal legs and a smooth surface.
+                    Shopping Query: modern black round dining table metal legs
+                    Change Type: added
+                    
+                    Item 2: White Office Chair 
+                    Description: Ergonomic white office chair with mesh back and adjustable height.
+                    Shopping Query: ergonomic white office chair mesh
+                    Change Type: replaced
+                    
+                    If you don't find any relevant items, please indicate this clearly.
+                    
+                    Additional context: ${context}
+                `;
+            }
+        }
+        
+        // Prepare the request body for image analysis
+        const apiKey = await fetchApiKeys();
+        
+        // Extract base64 data for the main image
+        const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
+        const imgMimeType = imageData.match(/^data:(image\/[a-z]+);base64,/)?.[1] || 'image/jpeg';
+        
+        // Build the request parts starting with the prompt
+        const requestParts = [
+            { text: analysisPrompt },
+            { inline_data: { mime_type: imgMimeType, data: base64Data } }
+        ];
+        
+        // If we have original image data for comparison (room analysis only)
+        if (analysisType === 'room' && originalImageData) {
+            // Add the original image as a second image
+            const originalBase64Data = originalImageData.replace(/^data:image\/[a-z]+;base64,/, "");
+            const originalImgMimeType = originalImageData.match(/^data:(image\/[a-z]+);base64,/)?.[1] || 'image/jpeg';
+            
+            // Add original image to request parts
+            requestParts.push({ inline_data: { mime_type: originalImgMimeType, data: originalBase64Data } });
+            
+            console.log("Added original image for comparison analysis");
+        }
+        
+        // Build the complete request for the image model
+        const requestBody = {
+            contents: [{
+                parts: requestParts,
+                role: "user"
+            }],
+            generationConfig: {
+                temperature: 0.0, // Zero temperature for most deterministic responses
+                topK: 32,
+                topP: 0.95,
+                responseModalities: ['TEXT', 'IMAGE'],
+                maxOutputTokens: 4000
+            }
+        };
+        
+        // Call the Gemini API with the image generation model
+        const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODEL}:generateContent?key=${apiKey}`;
+        
+        const response = await fetch(apiEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: { message: "Unknown API error." } }));
+            throw new Error(`Image Analysis API Error (${response.status}): ${errorData.error?.message || "Request failed"}`);
+        }
+        
+        const responseData = await response.json();
+        
+        // Extract text response
+        let analysisText = '';
+        if (responseData.candidates?.[0]?.content?.parts) {
+            for (const part of responseData.candidates[0].content.parts) {
+                if (part.text) analysisText += part.text;
+            }
+        }
+        
+        // Log raw response first for debugging
+        console.log("Raw image analysis response (first 200 chars):", analysisText.substring(0, 200));
+        
+        // Clean up the analysis text
+        analysisText = analysisText.trim();
+        
+        // Remove any markdown indicators or introductory text
+        analysisText = analysisText.replace(/```.*?```/gs, '')
+                                 .replace(/'''.*?'''/gs, '')
+                                 .replace(/^Outputting.*?:/i, '')
+                                 .replace(/^Here is the analysis.*?:/i, '')
+                                 .trim();
+        
+        console.log("Clean analysis result:", analysisText);
+        
+        // Check if the response is JSON-formatted (looks like a JSON object)
+        if (analysisText.trim().startsWith('{') && analysisText.trim().endsWith('}')) {
+            try {
+                console.log("Detected JSON format response, attempting to parse");
+                const jsonObject = JSON.parse(analysisText);
+                
+                // Create a structured item from the JSON
+                if (jsonObject.name || jsonObject.description || jsonObject.google_shopping_query) {
+                    const item = {
+                        name: jsonObject.name || "Product",
+                        description: jsonObject.description || "",
+                        google_shopping_query: jsonObject.google_shopping_query || jsonObject.name || ""
+                    };
+                    
+                    console.log("Successfully extracted item from JSON:", item);
+                    return [item];
+                }
+            } catch (jsonError) {
+                console.warn("Failed to parse as JSON, continuing with text extraction:", jsonError.message);
+            }
+        }
+        
+        // Extract item information from text format
+        try {
+            // These variables were previously defined but are now used in a different way
+            // Keep compatible declarations to avoid other code breaking
+            const requestedItemNames = [];
+            const requestedItemsSimple = [];
+            
+            // Extract items from context
+            if (context) {
+                const contextItems = context.match(/Specifically look for these items: ([^\n]*)/i);
+                if (contextItems && contextItems[1]) {
+                    const itemNames = contextItems[1].split(/,\s*/);
+                    console.log(`Looking for these specific items in analysis: ${itemNames.join(', ')}`);
+                    // Populate the compatibility arrays
+                    itemNames.forEach(item => {
+                        if (item && item.trim()) {
+                            const itemName = item.trim();
+                            requestedItemNames.push(itemName.toLowerCase());
+                            requestedItemsSimple.push({
+                                name: itemName,
+                                description: `${itemName} - identified in the context`,
+                                google_shopping_query: itemName
+                            });
+                        }
+                    });
+                }
+            }
+            
+            // Try to parse the text directly using patterns for our formatted output
+            const items = [];
+            
+            // Skip JSON-like text for segment splitting - we already tried JSON parsing above
+            if (!analysisText.trim().startsWith('{')) {
+                // Split the text into segments - each segment is a potential item
+                // Look for patterns like "Item N:" or "Product Name:"
+                const itemSegments = analysisText.split(/(?:Item \d+:|Product Name:)/g).filter(Boolean);
+                
+                if (itemSegments.length > 0) {
+                    console.log(`Found ${itemSegments.length} potential item segments`);
+                    
+                    itemSegments.forEach((segment, index) => {
+                        // Parse each segment
+                        const nameMatch = segment.match(/(?:^:|^)\s*(.*?)(?:\n|$)/);
+                        const descMatch = segment.match(/Description:\s*(.*?)(?:\n|$)/i);
+                        const queryMatch = segment.match(/(?:Shopping Query|Search Query):\s*(.*?)(?:\n|$)/i);
+                        const changeMatch = segment.match(/Change Type:\s*(.*?)(?:\n|$)/i);
+                        
+                        if (nameMatch || descMatch || queryMatch) {
+                            const item = {
+                                name: (nameMatch && nameMatch[1].trim()) || `Item ${index + 1}`,
+                                description: (descMatch && descMatch[1].trim()) || "",
+                                google_shopping_query: (queryMatch && queryMatch[1].trim()) || 
+                                                      (nameMatch && nameMatch[1].trim()) || "",
+                            };
+                            
+                            // Add change type if available
+                            if (changeMatch && changeMatch[1].trim()) {
+                                item.change_type = changeMatch[1].trim();
+                            }
+                            
+                            items.push(item);
+                        }
+                    });
+                    
+                    if (items.length > 0) {
+                        console.log(`Successfully extracted ${items.length} items from text format:`, items);
+                        return items;
+                    }
+                }
+            }
+            
+            // If we don't find our expected format, look for product specifics (skip if we have JSON)
+            if (analysisType === 'product' && !analysisText.trim().startsWith('{')) {
+                const nameMatch = analysisText.match(/Product Name:\s*(.*?)(?:\n|$)/i);
+                const descMatch = analysisText.match(/Description:\s*(.*?)(?:\n|$)/i);
+                const queryMatch = analysisText.match(/(?:Shopping Query|Search Query):\s*(.*?)(?:\n|$)/i);
+                
+                if (nameMatch || descMatch || queryMatch) {
+                    const item = {
+                        name: (nameMatch && nameMatch[1].trim()) || "Product",
+                        description: (descMatch && descMatch[1].trim()) || "",
+                        google_shopping_query: (queryMatch && queryMatch[1].trim()) || 
+                                               (nameMatch && nameMatch[1].trim()) || "",
+                    };
+                    
+                    console.log("Extracted single product information:", item);
+                    return [item];
+                }
+            }
+            
+            // Try a more generic approach - look for any paragraphs that might contain item descriptions
+            const paragraphs = analysisText.split(/\n\s*\n/).filter(p => p.trim().length > 10);
+            if (paragraphs.length > 0) {
+                console.log(`Found ${paragraphs.length} paragraphs to analyze`);
+                
+                // If there's a reasonable number of paragraphs, assume each is a description
+                if (paragraphs.length <= 5) {
+                    const items = paragraphs.map((paragraph, i) => {
+                        // Try to extract a name, or use a generic one
+                        const nameMatch = paragraph.match(/^([^\.,:;]+)[\.,:;]/);
+                        const name = nameMatch ? nameMatch[1].trim() : `Item ${i+1}`;
+                        
+                        return {
+                            name: name,
+                            description: paragraph.trim(),
+                            google_shopping_query: name
+                        };
+                    });
+                    
+                    console.log(`Extracted ${items.length} items from paragraphs:`, items);
+                    return items;
+                }
+            }
+            
+            // Last resort: Create items from the context
+            if (context && context.includes("Specifically look for these items")) {
+                const specificItems = context.split("Specifically look for these items:")[1].split(",").map(item => item.trim());
+                if (specificItems.length > 0) {
+                    console.log("Creating items from context as fallback");
+                    const contextItems = specificItems.map(item => ({
+                        name: item,
+                        description: `${item} as mentioned in context`,
+                        google_shopping_query: item
+                    }));
+                    return contextItems;
+                }
+            }
+            
+            // Last resort fallback - create a generic item
+            return [{
+                name: analysisType === 'product' ? "Furniture Item" : "Room Item",
+                description: analysisText.substring(0, 200),
+                google_shopping_query: context || (analysisType === 'product' 
+                    ? `modern ${analysisType} furniture home decor` 
+                    : "modern home furniture decor")
+            }];
+        } catch (parseError) {
+            console.error("Error parsing image analysis response:", parseError);
+            throw new Error("Failed to parse product information from image analysis");
+        }
+    } catch (error) {
+        console.error("Error in image analysis:", error);
+        throw error;
+    }
+}
+
 // --- Vetted API Integration ---
+
+/**
+ * Implements retry logic with exponential backoff
+ * @param {Function} fn - The async function to retry
+ * @param {number} maxRetries - Maximum number of retry attempts
+ * @param {number} baseDelay - Base delay in milliseconds between retries
+ * @param {Function} shouldRetry - Function that determines if the error is retryable
+ * @returns {Promise<any>} - Result of the function call
+ */
+async function withRetry(fn, maxRetries = 3, baseDelay = 500, shouldRetry = () => true) {
+    let lastError;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            // First attempt (attempt=0) or retry attempts
+            if (attempt > 0) {
+                // Calculate exponential backoff delay
+                const delay = baseDelay * Math.pow(2, attempt - 1);
+                // Add some jitter (± 20% randomness)
+                const jitter = delay * 0.2 * (Math.random() - 0.5);
+                const finalDelay = delay + jitter;
+                
+                console.log(`Retry attempt ${attempt}/${maxRetries} after ${Math.round(finalDelay)}ms delay...`);
+                await new Promise(resolve => setTimeout(resolve, finalDelay));
+            }
+            
+            // Attempt the function call
+            return await fn();
+        } catch (error) {
+            lastError = error;
+            
+            // Check if we should retry based on the error
+            if (attempt < maxRetries && shouldRetry(error)) {
+                console.warn(`Attempt ${attempt + 1}/${maxRetries + 1} failed:`, error.message);
+                // Continue to next iteration which will retry after delay
+            } else {
+                // Either we've exhausted retries or error is not retryable
+                console.error(`All ${attempt + 1} attempts failed:`, error);
+                throw error;
+            }
+        }
+    }
+    
+    // This shouldn't be reached but just in case
+    throw lastError;
+}
+
+// Implementation of product search using findproducts_v3 endpoint
+async function fetchQuery(name, body, options = {}) {
+    const { headers } = options;
+    
+    console.log(`fetchQuery called: ${name}`, body);
+    
+    // For findProducts queries, use the new v3 endpoint via proxy
+    if (name === "findProducts") {
+        try {
+            // Format the request payload according to the API documentation
+            const requestPayload = {
+                context: body.query, // Search query goes in the context field
+                localization: "us", // Default to US localization
+                meta: {
+                    user: {
+                        subscription: {
+                            plan: "free"
+                        },
+                        location: {
+                            uule: "" // Optional user location parameter
+                        }
+                    }
+                }
+            };
+            
+            console.log(`Using proxy to call findproducts_v3 endpoint with:`, requestPayload);
+            
+            // IMPORTANT: We're always using the proxy to avoid CORS issues
+            const proxyUrl = '/api/proxy/https://research-function.reefpig.com/v3/research/findproducts';
+            
+            // Start the server if it's not running
+            try {
+                // Make a simple request to check if the server is up
+                // Use GET method instead of HEAD which might not be supported
+                await fetch('/api/vetted-key', { method: 'GET' });
+            } catch (serverCheckError) {
+                console.error("Server connection check failed:", serverCheckError);
+                throw new Error("Server is not running. Please start the server with 'npm run dev'");
+            }
+            
+            // Define a function to check if an error is retryable
+            const isRetryableError = (error) => {
+                // Network errors are retryable
+                if (error.message.includes("Network error")) return true;
+                
+                // Certain status codes are retryable
+                if (error.message.includes("522") || // Connection timed out
+                    error.message.includes("500") || // Server error
+                    error.message.includes("503") || // Service unavailable
+                    error.message.includes("504"))   // Gateway timeout
+                {
+                    return true;
+                }
+                
+                // Rate limiting should use exponential backoff
+                if (error.message.includes("429")) return true;
+                
+                // Default to not retrying
+                return false;
+            };
+            
+            // Make the API call with retry logic
+            const result = await withRetry(
+                async () => {
+                    // Generate a new correlation ID for each attempt
+                    const correlationId = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+                    
+                    const response = await fetch(proxyUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            // Include required headers for the v3 API, but let the proxy handle them
+                            'x-correlation-id': correlationId,
+                            'x-session-id': '${SESSION_ID}',
+                            'vetted-caller-id': '${CALLER_ID}',
+                            ...(headers || {})
+                        },
+                        body: JSON.stringify(requestPayload)
+                    }).catch(error => {
+                        console.error("Network error during API call:", error);
+                        throw new Error(`Network error: ${error.message}`);
+                    });
+                    
+                    // Check for successful response
+                    if (!response.ok) {
+                        // Try to get error text, but handle the case where we can't
+                        let errorText = "";
+                        try {
+                            errorText = await response.text();
+                        } catch (err) {
+                            errorText = "Unable to get error details";
+                        }
+                        
+                        console.error(`API error (${response.status}):`, errorText);
+                        
+                        // For certain status codes, add more specific error information
+                        if (response.status === 522) {
+                            console.error("Connection timed out - server may be overloaded or down");
+                            throw new Error(`API error: Connection timed out (522)`);
+                        } else if (response.status === 429) {
+                            console.error("Rate limit exceeded");
+                            throw new Error(`API error: Rate limit exceeded (429)`);
+                        } else {
+                            throw new Error(`API error: ${response.status}`);
+                        }
+                    }
+                    
+                    // Parse the response according to the API documentation format
+                    const data = await response.json();
+                    console.log(`Received response from findproducts_v3:`, data);
+                    
+                    // Return the results from the API (products array)
+                    return data.products || [];
+                },
+                3,  // maxRetries - try up to 3 times
+                1000, // baseDelay - start with 1 second, then 2s, then 4s
+                isRetryableError // only retry specific errors
+            );
+            
+            return result;
+            
+        } catch (error) {
+            console.error(`Error with findproducts_v3 after all retries:`, error);
+            
+            // Fallback to mock data if the proxy also fails
+            console.warn(`Falling back to mock data for query: "${body.query}"`);
+            return generateMockProducts(body.query, body.limit || 6);
+        }
+    } else {
+        // For other query types, just return empty results
+        console.warn(`Query type '${name}' not supported with the v3 API`);
+        return [];
+    }
+}
+
 async function fetchApiKeyForVetted() {
     console.log("Fetching Vetted API key from server...");
     try {
@@ -1006,87 +1975,108 @@ async function fetchApiKeyForVetted() {
         return apiKey;
     } catch (error) {
         console.error("Error fetching Vetted API key:", error);
-        // Fallback to a default API key for development (remove in production)
         return null;
     }
 }
 
 async function findProductsWithVettedApi(items) {
+    // Create a unique ID for this product search instance
+    const searchId = Date.now().toString();
+    
     try {
         // Show loading indicator for products
         const productsContainer = document.createElement('div');
         productsContainer.className = 'product-recommendations';
+        productsContainer.id = `product-search-${searchId}`;
         productsContainer.innerHTML = '<h3>Finding products that match your design...</h3><div class="product-loading"><span class="spinner"></span></div>';
         conversationArea.appendChild(productsContainer);
         conversationArea.scrollTop = conversationArea.scrollHeight;
         
         // Get API key
         const apiKey = await fetchApiKeyForVetted();
-        if (!apiKey) {
-            throw new Error("Unable to get Vetted API key");
-        }
         
-        // Process each item
+        // Process items in parallel with batches of 3 max to avoid overloading
         const productResults = {};
-        for (const item of items) {
-            // Call the Vetted API for each shopping query
-            const results = await searchVettedProducts(apiKey, item.google_shopping_query);
-            productResults[item.name] = {
-                query: item.google_shopping_query,
-                description: item.description || '',
-                results: results || []
-            };
+        const batchSize = 3; // Process 3 items at a time max
+        
+        // Break items into batches
+        for (let i = 0; i < items.length; i += batchSize) {
+            const batch = items.slice(i, i + batchSize);
+            
+            // Create array of promises for parallel execution
+            const batchPromises = batch.map(async (item) => {
+                try {
+                    console.log(`Searching for products matching: "${item.google_shopping_query}"`);
+                    
+                    // Use real fetchQuery to search for products
+                    const results = await fetchQuery("findProducts", {
+                        query: item.google_shopping_query,
+                        limit: 6,
+                        includeOutOfStock: false
+                    }, {
+                        headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : undefined
+                    });
+                    
+                    return {
+                        name: item.name,
+                        data: {
+                            query: item.google_shopping_query,
+                            description: item.description || '',
+                            results: results || []
+                        }
+                    };
+                } catch (error) {
+                    console.error(`Error searching for "${item.name}":`, error);
+                    return {
+                        name: item.name,
+                        data: {
+                            query: item.google_shopping_query,
+                            description: item.description || '',
+                            results: [],
+                            error: error.message
+                        }
+                    };
+                }
+            });
+            
+            // Wait for all items in this batch to complete
+            const batchResults = await Promise.all(batchPromises);
+            
+            // Add results to the productResults object
+            batchResults.forEach(result => {
+                productResults[result.name] = result.data;
+            });
         }
         
-        // Display the product results
-        displayProductRecommendations(productsContainer, productResults);
+        // Make sure the container still exists (user might have cleared the conversation)
+        const container = document.getElementById(`product-search-${searchId}`);
+        if (container) {
+            // Display the product results
+            displayProductRecommendations(container, productResults);
+        } else {
+            console.warn("Product search container no longer exists - results not displayed");
+        }
+        
+        return { success: true, count: Object.keys(productResults).length };
     } catch (error) {
         console.error("Error finding products:", error);
-        const errorMessage = document.createElement('div');
-        errorMessage.className = 'error-message';
-        errorMessage.textContent = `Unable to find product recommendations: ${error.message}`;
-        conversationArea.appendChild(errorMessage);
-    }
-}
-
-async function searchVettedProducts(apiKey, query) {
-    try {
-        console.log(`Searching for products matching: "${query}"`);
         
-        // First, try to use the Vetted API with the proper method
-        try {
-            // Import properly from the installed SDK
-            const lustreSDK = await import('/node_modules/@lustre/sdk/dist/index.js');
-            
-            // The SDK provides a fetchQuery method for making API calls
-            if (lustreSDK.fetchQuery) {
-                console.log("Using @lustre/sdk fetchQuery method");
-                
-                // Use fetchQuery from the SDK to search for products
-                const results = await lustreSDK.fetchQuery("findProducts", {
-                    query: query,
-                    limit: 6,
-                    includeOutOfStock: false
-                }, {
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`
-                    }
-                });
-                
-                console.log(`Found ${results?.length || 0} products via Lustre SDK`);
-                return results || [];
-            } else {
-                throw new Error("fetchQuery method not available in Lustre SDK");
-            }
-        } catch (sdkError) {
-            console.error("Failed to use Lustre SDK:", sdkError);
-            console.log("Falling back to mock product data");
-            return generateMockProducts(query);
+        // Check if container still exists
+        const container = document.getElementById(`product-search-${searchId}`);
+        if (container) {
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'error-message';
+            errorMessage.textContent = `Unable to find product recommendations: ${error.message}`;
+            container.innerHTML = ''; // Clear the loading spinner
+            container.appendChild(errorMessage);
+        } else {
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'error-message';
+            errorMessage.textContent = `Unable to find product recommendations: ${error.message}`;
+            conversationArea.appendChild(errorMessage);
         }
-    } catch (error) {
-        console.error(`Error searching for "${query}":`, error);
-        // Still return mock products even if an error occurs
-        return generateMockProducts(query, 2);
+        
+        return { success: false, error: error.message };
     }
 }
 
@@ -1269,15 +2259,21 @@ function createProductCard(product) {
         // Debug the product structure to understand what we're working with
         console.log('Creating product card for:', product);
         
-        // Get image URL with more robust fallbacks
+        // Get image URL with more robust fallbacks for the v3 API response format
         let imageUrl = null;
         
-        // Try multiple possible image properties based on SDK version and API format
-        if (product.image_url) imageUrl = product.image_url;
-        else if (product.imageUrl) imageUrl = product.imageUrl;
-        else if (product.image) imageUrl = product.image;
-        else if (product.images && product.images.length > 0) imageUrl = product.images[0];
-        else if (product.imageUrls && product.imageUrls.length > 0) imageUrl = product.imageUrls[0];
+        // Try multiple possible image properties, including the new v3 API format
+        if (product.imageUrls && product.imageUrls.length > 0) {
+            imageUrl = product.imageUrls[0];
+        } else if (product.image_url) {
+            imageUrl = product.image_url;
+        } else if (product.imageUrl) {
+            imageUrl = product.imageUrl;
+        } else if (product.image) {
+            imageUrl = product.image;
+        } else if (product.images && product.images.length > 0) {
+            imageUrl = product.images[0];
+        }
         
         if (imageUrl) {
             const img = document.createElement('img');
@@ -1302,41 +2298,296 @@ function createProductCard(product) {
         const details = document.createElement('div');
         details.className = 'product-details';
         
-        // Add title with robust fallbacks
+        // Add title with robust fallbacks for v3 API
         const title = document.createElement('h5');
         title.className = 'product-title';
         title.textContent = product.title || product.name || product.productName || 'Unknown Product';
         details.appendChild(title);
         
-        // Add price with enhanced format handling
+        // Add price with enhanced format handling for v3 API format
         let price = null;
         
-        // Try all possible price formats based on SDK version and API response
-        if (product.price) price = product.price;
-        else if (product.priceInfo?.amount) price = product.priceInfo.amount;
-        else if (product.currentPrice) price = product.currentPrice;
-        else if (product.priceInfo?.currentPrice) price = product.priceInfo.currentPrice;
+        // Try all possible price formats based on API response format
+        if (product.affiliatePages && product.affiliatePages.length > 0 && product.affiliatePages[0].price) {
+            price = product.affiliatePages[0].price;
+        } else if (product.price) {
+            price = product.price;
+        } else if (product.priceInfo?.amount) {
+            price = product.priceInfo.amount;
+        } else if (product.currentPrice) {
+            price = product.currentPrice;
+        } else if (product.priceInfo?.currentPrice) {
+            price = product.priceInfo.currentPrice;
+        }
         
         if (price) {
+            const priceContainer = document.createElement('div');
+            priceContainer.className = 'product-price-container';
+            
             const priceElement = document.createElement('p');
             priceElement.className = 'product-price';
             
+            // Always treat prices as cents (divide by 100 to get dollars)
             if (typeof price === 'number') {
-                priceElement.textContent = `$${price.toFixed(2)}`;
+                const dollars = (price / 100).toFixed(2);
+                priceElement.textContent = `$${dollars}`;
             } else if (typeof price === 'string') {
-                priceElement.textContent = price.startsWith('$') ? price : `$${price}`;
-            } else if (typeof price === 'object' && price.currency === 'USD') {
-                priceElement.textContent = `$${price.amount.toFixed(2)}`;
+                // Extract numeric value from string and convert to dollars
+                const numericPrice = parseFloat(price.replace(/[^0-9.]/g, ''));
+                if (!isNaN(numericPrice)) {
+                    const dollars = (numericPrice / 100).toFixed(2);
+                    priceElement.textContent = `$${dollars}`;
+                } else {
+                    priceElement.textContent = price.startsWith('$') ? price : `$${price}`;
+                }
+            } else if (typeof price === 'object' && price.currency) {
+                const currencySymbol = price.currency === 'USD' ? '$' : price.currency;
+                if (typeof price.amount === 'number') {
+                    const dollars = (price.amount / 100).toFixed(2);
+                    priceElement.textContent = `${currencySymbol}${dollars}`;
+                } else {
+                    const numericAmount = parseFloat(String(price.amount).replace(/[^0-9.]/g, ''));
+                    if (!isNaN(numericAmount)) {
+                        const dollars = (numericAmount / 100).toFixed(2);
+                        priceElement.textContent = `${currencySymbol}${dollars}`;
+                    } else {
+                        priceElement.textContent = `${currencySymbol}${price.amount}`;
+                    }
+                }
+            } else if (typeof price === 'object' && price.amount) {
+                // For v3 API price format - always convert to dollars
+                if (typeof price.amount === 'number') {
+                    const dollars = (price.amount / 100).toFixed(2);
+                    priceElement.textContent = `$${dollars}`;
+                } else {
+                    const numericAmount = parseFloat(String(price.amount).replace(/[^0-9.]/g, ''));
+                    if (!isNaN(numericAmount)) {
+                        const dollars = (numericAmount / 100).toFixed(2);
+                        priceElement.textContent = `$${dollars}`;
+                    } else {
+                        priceElement.textContent = `$${price.amount}`;
+                    }
+                }
             } else {
                 // If we can't determine the price format, show a generic message
                 priceElement.textContent = 'See price';
             }
             
-            details.appendChild(priceElement);
+            priceContainer.appendChild(priceElement);
+            
+            // Add action buttons next to price
+            const actionsContainer = document.createElement('div');
+            actionsContainer.className = 'product-actions';
+            
+            // Add a "Add to Cart" button
+            const cartButton = document.createElement('button');
+            cartButton.className = 'product-action-btn cart-btn';
+            cartButton.innerHTML = '🛒'; // Shopping cart emoji
+            cartButton.title = 'Add to cart';
+            cartButton.onclick = (e) => {
+                e.preventDefault();
+                cartButton.classList.add('added');
+                setTimeout(() => cartButton.classList.remove('added'), 1500);
+                alert(`Added "${product.title || product.name || 'this product'}" to cart`);
+                // Future feature: Add to cart and update LLM to replace placeholders with real items
+            };
+            actionsContainer.appendChild(cartButton);
+            
+            // Add a "More like this" button to find similar items
+            const similarButton = document.createElement('button');
+            similarButton.className = 'product-action-btn similar-btn';
+            similarButton.innerHTML = '🔍'; // Magnifying glass emoji
+            similarButton.title = 'Find more like this';
+            similarButton.onclick = async (e) => {
+                e.preventDefault();
+                
+                // Get product info for the UI
+                const productName = product.title || product.name || 'this product';
+                
+                // Add a message to show what's happening
+                const userMessage = `Finding more products similar to this ${productName}...`;
+                addMessageToConversation(userMessage, "user");
+                conversationManager.addMessage("user", userMessage);
+                
+                // Add loading message
+                addMessageToConversation("Analyzing product and searching for similar items...", "ai", true);
+                
+                try {
+                    // Extract product image if available
+                    let productImageUrl = null;
+                    if (product.imageUrls && product.imageUrls.length > 0) {
+                        productImageUrl = product.imageUrls[0];
+                    } else if (product.image_url) {
+                        productImageUrl = product.image_url;
+                    } else if (product.imageUrl) {
+                        productImageUrl = product.imageUrl;
+                    } else if (product.image) {
+                        productImageUrl = product.image;
+                    } else if (product.images && product.images.length > 0) {
+                        productImageUrl = product.images[0];
+                    }
+                    
+                    // If we don't have an image, use text-based search as fallback
+                    if (!productImageUrl) {
+                        console.log("No product image found. Using text-based search as fallback.");
+                        
+                        // Create a text-based description
+                        const textDescription = product.description || 
+                            `${productName} ${product.brand || product.merchant || ''} ${product.color || ''} ${product.material || ''}`;
+                        
+                        const searchItem = {
+                            name: productName,
+                            description: textDescription,
+                            google_shopping_query: `${productName} similar style design`
+                        };
+                        
+                        // Log the search item
+                        console.log("Searching for similar products using text fallback:", searchItem);
+                        
+                        // Call the product search API
+                        await findProductsWithVettedApi([searchItem]);
+                    } else {
+                        // We have an image URL, fetch it and convert to base64 - use proxy to avoid CORS issues
+                        console.log("Product image found. Using visual analysis for search:", productImageUrl);
+                        
+                        let base64Image = null;
+                        let useTextFallback = false;
+                        
+                        try {
+                            // Use our proxy to avoid CORS issues
+                            // First make sure to properly encode the URL
+                            const encodedUrl = encodeURIComponent(productImageUrl);
+                            const proxyUrl = `/api/proxy/${encodedUrl}`;
+                            console.log("Using proxy to fetch image:", proxyUrl);
+                            
+                            // Convert image URL to base64 by fetching it via proxy
+                            const response = await fetch(proxyUrl);
+                            
+                            if (!response.ok) {
+                                throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+                            }
+                            
+                            const blob = await response.blob();
+                            
+                            // Verify we got an image
+                            if (!blob.type.startsWith('image/')) {
+                                throw new Error(`Received non-image content: ${blob.type}`);
+                            }
+                            
+                            // Create a FileReader to convert the blob to base64
+                            base64Image = await new Promise((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => resolve(reader.result);
+                                reader.onerror = reject;
+                                reader.readAsDataURL(blob);
+                            });
+                        } catch (fetchError) {
+                            console.error("Error fetching product image:", fetchError);
+                            useTextFallback = true;
+                            addMessageToConversation(
+                                `I couldn't retrieve the product image, so I'll use text-based search instead.`,
+                                "ai"
+                            );
+                            conversationManager.addMessage(
+                                "assistant",
+                                `I couldn't retrieve the product image, so I'll use text-based search instead.`
+                            );
+                        }
+                        
+                        if (useTextFallback) {
+                            // Fallback to text-based search
+                            console.log("Falling back to text-based search due to image fetch failure");
+                            const textDescription = product.description || 
+                                `${productName} ${product.brand || product.merchant || ''} ${product.color || ''} ${product.material || ''}`;
+                            
+                            const searchItem = {
+                                name: productName,
+                                description: textDescription,
+                                google_shopping_query: `${productName} similar style design`
+                            };
+                            
+                            // Log the search item
+                            console.log("Searching for similar products using text fallback:", searchItem);
+                            
+                            // Call the product search API
+                            addMessageToConversation("Searching for products...", "ai", true);
+                            await findProductsWithVettedApi([searchItem]);
+                        } else {
+                            // Create a context with existing product information
+                            const analysisContext = `${productName} ${product.description || ''} ${product.brand || product.merchant || ''}`;
+                            
+                            // Analyze the product image
+                            addMessageToConversation("Analyzing product details...", "ai", true);
+                            const analyzedItems = await analyzeImageForProducts(base64Image, 'product', analysisContext);
+                            
+                            // Show analysis message
+                            addMessageToConversation(
+                                `Based on my analysis of the ${productName}, I'll find similar products that match its style and features.`, 
+                                "ai"
+                            );
+                            conversationManager.addMessage(
+                                "assistant", 
+                                `Based on my analysis of the ${productName}, I'll find similar products that match its style and features.`
+                            );
+                            
+                            // Log the analyzed items
+                            console.log(`Image analysis produced ${analyzedItems.length} items:`, analyzedItems);
+                            
+                            // Start the product search
+                            addMessageToConversation("Searching for products...", "ai", true);
+                            await findProductsWithVettedApi(analyzedItems);
+                        }
+                    }
+                    
+                    // Add a success message
+                    addMessageToConversation(
+                        `Here are some products similar to the ${productName} you were interested in. I focused on matching the style, materials, and design features.`, 
+                        "ai"
+                    );
+                    conversationManager.addMessage(
+                        "assistant", 
+                        `Here are some products similar to the ${productName} you were interested in. I focused on matching the style, materials, and design features.`
+                    );
+                } catch (error) {
+                    console.error("Error analyzing product and searching for similar items:", error);
+                    
+                    // Remove any remaining loading messages
+                    conversationArea.querySelectorAll('.loading-message').forEach(msg => msg.remove());
+                    
+                    // Show error message
+                    addMessageToConversation(
+                        `I had trouble finding similar products to the ${productName}. ${error.message}`, 
+                        "ai", 
+                        false, 
+                        true
+                    );
+                }
+            };
+            actionsContainer.appendChild(similarButton);
+            
+            priceContainer.appendChild(actionsContainer);
+            details.appendChild(priceContainer);
         }
         
-        // Add store/brand name with robust fallbacks
-        const merchant = product.store || product.brand || product.merchant || product.retailer || product.seller;
+        // Add store/brand name with robust fallbacks for v3 API
+        let merchant = null;
+        if (product.affiliatePages && product.affiliatePages.length > 0) {
+            // Extract merchant name from affiliate URL
+            const url = product.affiliatePages[0].url;
+            if (url) {
+                try {
+                    const urlObj = new URL(url);
+                    merchant = urlObj.hostname.replace('www.', '');
+                } catch (e) {
+                    // If URL parsing fails, use a generic name
+                    merchant = "Online Retailer";
+                }
+            }
+        }
+        
+        // Fallback to other merchant properties
+        merchant = merchant || product.store || product.brand || product.merchant || product.retailer || product.seller;
+        
         if (merchant) {
             const store = document.createElement('p');
             store.className = 'product-store';
@@ -1344,8 +2595,14 @@ function createProductCard(product) {
             details.appendChild(store);
         }
         
-        // Add "View Product" button with robust link fallbacks
-        const linkUrl = product.product_url || product.url || product.productUrl || 
+        // Add "View Product" button with robust link fallbacks for v3 API
+        let linkUrl = null;
+        if (product.affiliatePages && product.affiliatePages.length > 0) {
+            linkUrl = product.affiliatePages[0].affiliateUrl || product.affiliatePages[0].url;
+        }
+        
+        // Fallback to other URL properties
+        linkUrl = linkUrl || product.product_url || product.url || product.productUrl || 
                         product.link || product.productLink || product.productUrl;
         
         if (linkUrl) {

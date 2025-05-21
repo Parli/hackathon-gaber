@@ -6,7 +6,9 @@
       "Bash(rg:*)",
       "Bash(npm install:*)",
       "Bash(npm uninstall:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

@@ -575,11 +575,72 @@ body {
     -webkit-box-orient: vertical;
 }
 
+/* Price container with actions */
+.product-price-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
 .product-price {
-    margin: 0 0 4px 0;
+    margin: 0;
     font-size: 0.85rem;
     color: var(--secondary-accent-color);
     font-weight: 600;
+}
+
+/* Product action buttons */
+.product-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.product-action-btn {
+    border: none;
+    background: none;
+    padding: 2px 4px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    border-radius: 3px;
+    transition: all 0.2s;
+}
+
+.cart-btn {
+    background-color: var(--primary-accent-color); /* Orange */
+    color: white;
+    font-size: 0.9rem;
+    padding: 1px 4px;
+    border-radius: 4px;
+}
+
+.cart-btn:hover {
+    background-color: var(--primary-accent-hover-color);
+    transform: scale(1.05);
+}
+
+.cart-btn.added {
+    background-color: #22c55e; /* Green for success */
+    animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.similar-btn {
+    background-color: var(--secondary-accent-color); /* Teal */
+    color: white;
+    font-size: 0.9rem;
+    padding: 1px 4px;
+    border-radius: 4px;
+}
+
+.similar-btn:hover {
+    background-color: #0d9488; /* Darker teal */
+    transform: scale(1.05);
 }
 
 .product-store {
