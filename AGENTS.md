@@ -73,6 +73,9 @@ These values control which services the proxy may contact using the respective t
 3. Upload a room photo and interact with the chat UI.
 4. Deploy to Cloud Run with `npm run deploy` or remove the service with `npm run undeploy`.
 
+## Comment on Prompts
+The prompts are all placeholders to streamline the code and will be re-added once the code is cleaned up.
+
 ## Next Steps
 
 - Review `public/main.js` to learn how the Gemini models and product search flow are orchestrated.
