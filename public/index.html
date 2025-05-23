@@ -3,13 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Home Design Studio</title>
+    <title>Vetted Nest - AI Home Design Studio</title>
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
+    <link rel="manifest" href="/site.webmanifest">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="cart-panel" class="cart-panel">
+        <div class="cart-header">
+            <h3>Shopping Cart</h3>
+            <button id="close-cart-btn" class="close-cart-btn" aria-label="Close cart">✕</button>
+        </div>
+        <div id="cart-items" class="cart-items">
+            <!-- Cart items will be added here dynamically -->
+        </div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>Total:</span>
+                <span id="cart-total-price">$0.00</span>
+            </div>
+            <button id="checkout-btn" class="checkout-btn" disabled>Checkout</button>
+            <button id="clear-cart-btn" class="clear-cart-btn">Clear Cart</button>
+        </div>
+    </div>
+
+    <div class="cart-icon-container">
+        <button id="cart-toggle-btn" class="cart-toggle-btn" aria-label="Open shopping cart">
+            🛒 <span id="cart-badge" class="cart-badge" style="display: none;">0</span>
+        </button>
+    </div>
+
+    <div class="logo-container">
+        <img src="/logo_full.png" alt="Vetted Nest" class="logo">
+    </div>
+
+    <!-- Vision Mode Toggle -->
+    <div class="vision-controls">
+        <div class="vision-mode-selector">
+            <span class="vision-mode-label">Vision Mode:</span>
+            <div class="mode-labels">
+                <span class="mode-label fast">Fast</span>
+                <div class="mode-toggle">
+                    <input type="checkbox" id="vision-mode-toggle">
+                    <span class="mode-slider"></span>
+                </div>
+                <span class="mode-label pro">Pro</span>
+            </div>
+        </div>
+        <div class="vision-quality-selector">
+            <span class="vision-quality-label">Quality:</span>
+            <select id="vision-quality" class="quality-dropdown">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
+        </div>
+    </div>
+    
     <div class="app-container">
 
         <div class="chat-column">
@@ -20,7 +81,6 @@
                     <input type="file" id="room-photo-input" accept="image/*" style="display: none;">
                     <button type="button" id="upload-btn" class="icon-btn" aria-label="Upload room photo">
                         📎 </button>
-                    <span id="upload-checkmark" style="display:none;">✅</span>
                     <input type="text" id="query-input" placeholder="Describe your vision..." aria-label="Describe your vision">
                     <button type="submit" id="submit-btn" aria-label="Send message">
                         ➤ </button>

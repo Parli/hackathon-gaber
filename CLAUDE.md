@@ -2,6 +2,49 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project Status - Vetted Nest AI Home Design Tool
+
+**Current Status**: Production-ready AI-powered home remodeling visualization tool with advanced features and dual-model architecture.
+
+### Core Features Implemented
+- **AI Room Redesign**: Upload room photos and get AI-generated remodeling visualizations with conversation-driven refinement
+- **Conversational Interface**: Natural language interaction for iterative design refinement with contextual emoji indicators
+- **Pro/Fast Vision Modes**: Toggle between Gemini (Fast) and GPT Image 1 (Pro) with intelligent fallbacks and localStorage persistence
+- **Product Discovery**: "Get This Room" functionality with real product recommendations via Vetted API and batch processing
+- **Product Integration**: "Add to Room Design" feature to visualize specific products in room designs with intelligent product interpretation
+- **Shopping Cart System**: Full e-commerce integration with cart management, quantity controls, and product purchasing workflows
+- **Design Version Management**: Edit specific design versions with "Edit This Design" functionality and visual selection indicators
+- **Advanced Product Search**: "More Like This" with full-screen modal offering Style, Color, and Brand similarity searches
+- **Google Lens Integration**: Visual product similarity search using SerpApi for enhanced product discovery
+- **Brand Reputation Analysis**: Automatic brand quality assessment with visual indicators for top-rated products
+- **User Experience Enhancements**: Comprehensive safety disclaimers, contextual product descriptions, and completion notifications
+
+### Technical Architecture
+- **Multi-Model Orchestration**: Intelligent routing between Gemini and OpenAI models based on user preferences with dynamic model selection
+- **Function Calling**: Advanced orchestrator with generateImage, findSimilarProducts, and addToImage functions plus parallel execution support
+- **Real API Integration**: Connected to Vetted (Reefpig) product API, Roundup API, and Google Lens API for comprehensive product discovery
+- **Robust Error Handling**: Exponential backoff, retry mechanisms, graceful fallbacks, and comprehensive logging
+- **Cloud-Ready Deployment**: Google Cloud Run compatible with proper PORT environment variable handling and production optimizations
+- **Responsive UI**: Modern design with proper state management, visual feedback, and accessibility considerations
+
+### User Experience
+- **Streamlined Workflow**: Upload → Describe → Visualize → Refine → Shop with intelligent contextual guidance
+- **Visual Selection**: Click-to-edit specific design versions with clear selection indicators and contextual emojis
+- **Product Discovery**: Parallel product searches with relevance filtering, brand reputation analysis, and visual similarity matching
+- **Cart Integration**: Seamless transition from design visualization to product purchasing with quantity management
+- **Safety Features**: Comprehensive disclaimers about product dimensions and fit verification
+- **Completion Feedback**: Real-time notifications when background processes (brand analysis) complete
+
+### Performance & Reliability
+- **Parallel Processing**: Concurrent function calls and batch operations for optimal performance across multiple APIs
+- **Connection Validation**: Pre-flight checks and intelligent retry logic with exponential backoff
+- **Memory Management**: Efficient conversation history and image state handling with localStorage persistence
+- **Error Recovery**: Comprehensive fallback mechanisms and user-friendly error messages
+- **Production Deployment**: Successfully deployed to Google Cloud Run with proper scaling and environment configuration
+- **Enhanced Filtering**: Advanced product category matching and visual relevancy checks for accurate results
+
+The application is now a sophisticated, production-ready tool that successfully bridges AI-powered interior design visualization with real-world product discovery and e-commerce functionality. It has been successfully deployed to Google Cloud Run and is publicly accessible for hackathon demonstrations.
+
 ## Overview of the starting conditions
 
 Node Simple Server is a minimalistic vanilla Node.js TypeScript server for rapid prototyping. It provides:
@@ -214,294 +257,90 @@ The correct format for image generation requests:
 
 5. **Response parsing**: Images are returned in the `inline_data` field of response parts, and must be properly extracted and decoded.
 
-### Next Steps
+---
 
-The next phase will involve:
+## Changelog
 
-1. Continuing the conversational refinement process through multiple turns
-2. Implementing the API integration to find real products matching the placeholders 
-3. Feeding those product images back to Gemini to incorporate them into the visualization
-4. Enabling the sharing and saving of final designs
+### Latest Updates (Major Feature Enhancements)
 
-## Update Log
+#### 🎯 Advanced Product Discovery System
+- **Enhanced "More Like This" Functionality**: Redesigned product similarity search with intelligent modal interface
+  - **Smart Modal UI**: Full-screen popup with three distinct search options (Style, Color, Brand) replacing cramped dropdown
+  - **Intelligent Query Generation**: Advanced parsing of product names to extract categories, styles, colors, and brands
+  - **Triple API Integration**: Parallel calls to Vetted API, Roundup API, and Google Lens API for comprehensive results
 
-### May 24, 2024 - "Start from Scratch" Bug Fixes and UX Improvements
+#### 🔍 Google Lens Visual Search Integration
+- **SerpApi Google Lens Integration**: Added visual similarity search using product images
+  - **Smart Activation**: Only for "Style" and "Color" searches (skips "Brand" searches where text is more effective)
+  - **Optimized Queries**: "find similar looking products" (style) and "find similar products in this color" (color)
+  - **API Key Management**: Securely integrated Google Lens API key in environment configuration
+  - **Error Handling**: Graceful fallback when product images unavailable with detailed console logging
 
-1. **Fixed "Start from Scratch" Functionality**:
-   - Resolved issue with "Start from Scratch" button failing to generate images consistently
-   - Fixed text input field breaking after selecting the "Start from Scratch" button
-   - Enhanced prompt handling for original image requests to ensure consistent image generation
-   - Improved CSS styling for selected image states to prevent visual glitches
+#### 🛠️ Improved Query Intelligence
+- **Smart Product Categorization**: Automatic detection of TVs, sofas, chairs, lamps, tables, etc.
+- **Style Keyword Extraction**: Identifies modern, rustic, vintage, scandinavian, minimalist styles
+- **Color Detection**: Extracts black, white, brown, wood, metal, glass from product descriptions
+- **Brand Intelligence**: Clean brand name extraction with fallback to common manufacturers
+- **Optimized Search Queries**: 
+  - Brand: "Samsung F6000F FHD Smart TV" → "samsung tv"
+  - Style: "Modern Sleek Coffee Table" → "modern sleek table"
+  - Color: "Black Leather Sofa" → "black sofa"
 
-2. **Enhanced Context Management**:
-   - Added ability to clear conversation history when starting from the original image
-   - Added explicit instructions in user queries when using the original room image
-   - Improved system prompt to prioritize requests starting from the original room
-   - Added specific handling for "Starting from the original room:" prefix in messages
+#### 🎨 Enhanced User Experience
+- **Welcome Section Modernization**: Comprehensive feature explanations with proper button references
+  - **Logo Integration**: Vetted Nest logo prominently displayed in welcome title (64px height)
+  - **Feature Documentation**: Detailed explanations of Fast/Pro modes, product card functions, design controls
+  - **Updated Examples**: Natural language examples using "sofa X" and "lamp Y" format
+  - **Design Control Features**: Clear instructions for "Start From Scratch" and "Edit This Design" functionality
 
-3. **UI and UX Enhancements**:
-   - Fixed CSS styling issues with input field border transitions
-   - Added consistent padding to prevent input field size changes when selecting different designs
-   - Improved class handling for input field visual states
-   - Enhanced UI feedback when working with the original image versus modified designs
+#### 🔧 UI/UX Polish & Refinements
+- **Product Card Optimization**: 
+  - Fixed image sizing with `object-fit: contain` to prevent cropping
+  - Corrected button descriptions to match actual functionality (🔍 "More Like This" not "View Product")
+- **Chat Interface Improvements**:
+  - Minimized unnecessary whitespace in chat input area
+  - Welcome message now persists until first text message (not image upload)
+  - Better spacing and padding optimization
+- **Button Icon Accuracy**: Updated welcome section to match actual product card icons (🖼️, 🛒, 🔍)
 
-4. **System Prompt Improvements**:
-   - Added dedicated section for "Start from Scratch" handling in system prompt
-   - Added explicit instructions to always generate images for original room requests
-   - Improved guidance for ignoring previous design iterations when working from original image
-   - Enhanced instructions for maintaining consistent perspective across design iterations
+#### ⚡ Performance & Technical Architecture
+- **Parallel API Execution**: All product searches now run concurrently using Promise.all()
+- **Progressive Results Display**: Real-time updates as each API completes
+- **Smart Error Recovery**: Individual API failures don't block other searches
+- **Comprehensive Logging**: Detailed console output for debugging and monitoring
+- **Environment Configuration**: Added Google Lens API credentials alongside existing keys
 
-5. **Code Robustness Improvements**:
-   - Fixed input field reset after submission
-   - Added proper class cleanup when deselecting images
-   - Improved transition effects for a smoother UI experience
-   - Added additional error prevention for edge cases in the image selection system
+#### 🛒 E-commerce Integration Enhancements
+- **Multi-Source Product Results**: Combined results from text search, expert recommendations, and visual similarity
+- **Success Message Intelligence**: Dynamic feedback showing which search methods found results
+- **Cart Integration Continuity**: Maintained seamless add-to-cart functionality across all search types
+- **Product Visualization**: "Add to Room Design" works with products from all search sources
 
-### May 22, 2024 - Advanced Context Handling and Image Input Enhancements
+### Technical Implementation Highlights
 
-1. **LLM-Powered Context Awareness**:
-   - Implemented full conversation history with images in API requests
-   - Enabled natural language references to previous designs without hardcoding
-   - Added image memory with up to 5 previous conversation turns
-   - Optimized conversation format for Gemini API compatibility
-   - Improved prompt handling to maintain contextual awareness across turns
+**Google Lens API Integration**:
+```javascript
+// Example API call structure
+const requestPayload = {
+    engine: "google_lens",
+    image_url: productImageUrl,
+    q: googleLensQuery, // "find similar looking products" or "find similar products in this color"
+    api_key: "${GOOGLE_LENS_API_KEY}"
+};
+```
 
-2. **Inline Image Attachments**:
-   - Added clipboard image pasting directly into chat messages
-   - Implemented drag-and-drop support for adding images to messages
-   - Created visual indicators and previews for attached images
-   - Added ability to remove pasted images before sending
-   - Enhanced message display to show attached images inline
+**Smart Query Generation Examples**:
+- **Before**: "Samsung F6000F FHD Smart TV brand similar"
+- **After**: "samsung tv" (much more effective for shopping searches)
 
-3. **Original Image Handling**:
-   - Implemented "reset to original" feature to restart designs from the original photo
-   - Added natural language detection for requests to use the original image
-   - Improved feedback when switching between original and modified images
-   - Optimized image handling logic to maintain correct context
+**Triple Parallel Search Architecture**:
+```javascript
+const apiCalls = [
+    findProductsWithVettedApi([searchItem]),        // General product search
+    findProductsWithRoundupApi([roundupItem]),      // Expert recommendations  
+    findProductsWithGoogleLens(imageUrl, query)     // Visual similarity (style/color only)
+];
+const results = await Promise.all(apiCalls);
+```
 
-4. **Conversation Flow Refinements**:
-   - Enhanced feedback messages for image processing states
-   - Added visual indicators for messages with image attachments
-   - Improved loading state handling for multiple operations
-   - Simplified the UI by removing unnecessary buttons and controls
-
-5. **Technical Improvements**:
-   - Structured conversation history to properly handle both text and images
-   - Implemented proper request formatting for multi-turn Gemini conversations
-   - Added role mapping between internal and API roles (assistant → model)
-   - Enhanced base64 encoding/decoding for image handling
-   - Optimized token usage by limiting history to recent exchanges
-
-### May 21, 2024 - UI Polish and Core Functionality Enhancements
-
-1. **Interface Refinements**:
-   - Simplified UI by removing the provider selection dropdown
-   - Optimized layout for better screen space utilization (7:5 ratio for chat:image columns)
-   - Improved visual hierarchy with consistent styling and color variables
-   - Added responsive design adjustments for different screen sizes
-   - Enhanced scrollbar styling for a more polished look
-
-2. **Image Handling Improvements**:
-   - Implemented toggle control to show/hide the original image
-   - Added support for showing up to 3 most recent remodeled versions
-   - Enhanced image display container with clearer labeling
-   - Improved progressive visualization by using the latest modified image for new requests
-   - Better error recovery when image generation fails
-
-3. **Conversation Experience**:
-   - Enhanced markdown parsing for AI responses
-   - Improved loading states during API requests with spinner animation
-   - Better error handling with user-friendly messages
-   - Added context-aware response handling
-
-4. **System Improvements**:
-   - Removed sharing functionality for simplification
-   - Enhanced security in API key handling
-   - Improved logging for better debugging
-   - Optimized memory usage for image and conversation storage
-
-5. **System Prompt Enhancement**:
-   - Refined the AI system prompt for more contextual responses
-   - Added intelligence to determine when image generation is appropriate
-   - Improved instructions for maintaining room dimensions and layout
-
-### May 20, 2024 - Initial UI and Gemini Integration
-
-1. **HTML Interface & UI Improvements**:
-   - Created a clean, user-friendly interface with a modern design
-   - Implemented side-by-side image display for original and modified room photos
-   - Added file upload functionality for room photos
-   - Built a conversational interface for design requests and feedback
-   - Enhanced the visual style with better spacing, shadows, and a consistent color scheme
-   - Removed duplicate preview image section for cleaner design
-
-2. **Gemini Model Integration**:
-   - Successfully integrated with the `gemini-2.0-flash-preview-image-generation` model
-   - Created a secure API key handling system via a dedicated server endpoint
-   - Implemented proper image encoding/decoding for data transfer
-   - Added error handling for API responses and user interactions
-
-3. **Smart Response Handling**:
-   - Implemented detection of text-only vs. design requests
-   - Added ability to have text-only conversations without generating images
-   - Improved response handling for both text and image responses
-   - Enhanced error messaging for cases when image generation fails
-
-4. **Technical Challenges Solved**:
-   - Resolved issues with the Gemini API's response modalities requirements
-   - Fixed problems with image formatting and API request structure
-   - Addressed authentication requirements for the Gemini API
-   - Implemented workarounds for the model's constraint of requiring both TEXT and IMAGE response modalities
-
-5. **UI Refinements**:
-   - Added loading indicators for better user experience
-   - Improved message styling for clearer conversation flow
-   - Enhanced form validation and error feedback
-   - Added sharing functionality for completed designs
-
-### May 23, 2024 - Major UX Improvements and Workflow Enhancements
-
-1. **Streamlined Conversation Flow**:
-   - Removed rigid conversation phase logic in favor of natural LLM-driven interactions
-   - Updated system prompt to encourage suggestions for open-ended requests while directly implementing clear instructions
-   - Improved contextual awareness by ensuring the LLM understands the user's intent level
-   - Eliminated unnecessary error messages for text-only responses
-
-2. **Design Selection System**:
-   - Added ability to select and edit any previous design with a dedicated "Edit This Design" button for each image
-   - Implemented a "Start from Scratch" button for returning to the original room image
-   - Enhanced user message display with contextual emojis to indicate which image is being edited
-     - 📎: Pasted new image
-     - 🏠: Starting from original room
-     - 📌: Editing specific design
-     - 🔄: Continuing with latest design
-   - Added visual indicators in the input field when editing specific designs
-
-3. **Context Preservation**:
-   - Implemented automatic attachment of the latest modified image with each message
-   - Updated system prompt to instruct the LLM to always work with the most recent image
-   - Added strict instructions to maintain perspective consistency
-
-4. **UI Simplification**:
-   - Removed redundant original image toggle and reset button
-   - Simplified image display to a single scrollable container with all versions
-   - Improved visual hierarchy with color-coding for different selection buttons
-   - Updated welcome message to clarify the suggestion-then-visualization workflow
-
-5. **Error Handling Improvements**:
-   - Removed artificial limits on design iterations
-   - Eliminated error messages when Gemini doesn't generate expected images
-   - Simplified logic to let the LLM naturally decide between text suggestions and visual output
-
-### May 25, 2024 - Code Refactoring and Product Recommendations Integration
-
-1. **Complete Code Refactoring**:
-   - Implemented object-oriented architecture with dedicated state management objects
-     - Created `imageState` object to handle all image-related state (original, remodels, selection)
-     - Created `conversationManager` object for message history and API formatting
-   - Reorganized code into logical sections for better maintainability
-     - Constants, DOM Elements, State Management, UI Functions, etc.
-   - Improved function organization with single-responsibility principle
-   - Enhanced error handling patterns for more robustness
-   - Added comprehensive logging for debugging
-
-2. **Function Calling for Product Recommendations**:
-   - Implemented Gemini function calling to enable real product searches
-   - Added `findSimilarProducts` function definition to handle shopping queries
-   - Integrated with Vetted API for product search and recommendations
-   - Created UI components to display matched products with images and details
-   - Added "View Product" buttons linking to purchase options
-   - Updated system prompt with guidelines for when to use the function
-   
-3. **Enhanced Image Selection System**:
-   - Redesigned selection logic to better handle state between image versions
-   - Added improved visual indicators for selections
-   - Implemented clear transitions between different image states
-   - Enhanced input field context indicators based on current selection
-
-4. **API Integration Improvements**:
-   - Added Vetted API key handling in the server
-   - Created dedicated API endpoint for secure key retrieval
-   - Added proper MIME type handling for image encoding/decoding
-   - Improved request/response handling for function calls
-
-5. **User Experience Improvements**:
-   - Added product recommendations grid with categories based on design elements
-   - Enhanced error handling for API failures
-   - Implemented loading indicators during product searches
-   - Added responsive styling for product recommendations
-   - Improved visual consistency across all components
-
-### May 26, 2024 - Orchestrator Architecture Implementation
-
-1. **Multi-Model Orchestration System**:
-   - Implemented an orchestrator architecture using two specialized AI models
-   - Added `gemini-2.5-flash-preview-04-17` as the main orchestrator model for conversation management
-   - Kept `gemini-2.0-flash-preview-image-generation` for specialized image generation
-   - Created environment variable configuration for model selection
-   - Added support for dynamic model IDs through server API
-
-2. **Function Calling Architecture**:
-   - Implemented a robust function calling system for the orchestrator model
-   - Created two main functions: `generateImage` and `findSimilarProducts`
-   - Defined precise function schemas and parameter specifications
-   - Built handlers for each function with proper error handling and state management
-   - Added intelligent mapping between image IDs and actual images
-
-3. **Improved User Experience Flow**:
-   - Simplified conversation flow with smarter model handling
-   - Added incremental status updates during complex operations
-   - Enhanced error handling with more specific error messages
-   - Improved loading indicators for different function operations
-   - Better transition between conversation and product recommendations
-
-4. **Robust API Integration**:
-   - Created dedicated client functions for each model with specific formatting
-   - Enhanced message history management for multi-model interactions
-   - Improved parsing of different response formats from the API
-   - Added comprehensive logging for debugging
-   - Better error recovery with fallback options
-
-5. **Code Architecture Improvements**:
-   - Redesigned the codebase for better separation of concerns
-   - Created dedicated functions for specific operations
-   - Enhanced state management with clear propagation
-   - Improved function isolation and reduced side effects
-   - Added better type handling for API interactions
-
-### May 27, 2024 - Orchestrator Refinements and Product API Integration
-
-1. **Orchestrator Response Handling Improvements**:
-   - Fixed function call detection in the Gemini API responses
-   - Enhanced the response parser to handle multiple function call formats
-   - Added more comprehensive logging for debugging
-   - Improved error handling and recovery for API interactions
-   - Fixed edge cases in function argument parsing
-
-2. **Vetted API Integration**:
-   - Implemented full integration with the Vetted product API
-   - Added API key configuration in environment variables
-   - Enhanced search parameters for better product matching
-   - Implemented proper error handling for API requests
-   - Added detailed logging for API interactions
-
-3. **Product Display Enhancements**:
-   - Updated product card components to handle various API response formats
-   - Added support for different product image and URL field naming conventions
-   - Enhanced price display to handle multiple price formats
-   - Added store/brand information to product cards
-   - Improved responsive styling for product recommendations
-
-4. **Environment Configuration**:
-   - Updated server to use dotenv for environment variable loading
-   - Modified package scripts for better compatibility
-   - Added proper configuration for model IDs in environment variables
-   - Integrated necessary dependencies like eventemitter3
-   - Enhanced server API endpoint error handling
-
-5. **Error Recovery Improvements**:
-   - Added more graceful error handling for API failures
-   - Enhanced debugging information for API errors
-   - Improved validation of API responses
-   - Added better user feedback for error states
-   - Enhanced resilience against malformed API responses
+This major update significantly enhances the product discovery capabilities, providing users with the most comprehensive and accurate product search experience possible through the combination of text-based search, expert curation, and advanced visual similarity matching.

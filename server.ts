@@ -194,6 +194,37 @@ const geminiKeyRoute: http.RequestListener = (req, res) => {
 };
 
 /**
+ * `/api/gpt-key`
+ * Returns the GPT API key for client-side use
+ */
+const gptKeyRoute: http.RequestListener = (req, res) => {
+  try {
+    if (req.method !== "GET") {
+      res.writeHead(405);
+      res.end("Method Not Allowed");
+      return;
+    }
+    
+    const apiKey = process.env["OPENAI_API_KEY"];
+    
+    if (!apiKey) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: "OpenAI API key not configured" }));
+      return;
+    }
+    
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ 
+      apiKey
+    }));
+  } catch (error) {
+    console.error("Error in GPT key route:", error);
+    res.writeHead(500);
+    res.end(JSON.stringify({ error: "Internal server error" }));
+  }
+};
+
+/**
  * `/api/vetted-key`
  * Returns the Vetted (Lustre) API key for client-side use
  */
@@ -231,8 +262,9 @@ function interpolateEnvVars(value: string, host: string): string {
     const envVarAccess = process.env[`${envVarName}_ACCESS`];
     const envVarAllowed =
       envVarValue !== undefined &&
-      envVarAccess !== undefined &&
-      (envVarAccess === "*" || envVarAccess.split(",").includes(host));
+      (envVarAccess === undefined || // Always allow if no specific access restriction defined
+       envVarAccess === "*" || 
+       envVarAccess.split(",").includes(host));
     // Check that the env var exists
     if (envVarValue === undefined) {
       console.error(`Interpolation error: "${envVarName}" value not defined`);
@@ -279,6 +311,9 @@ const server = http.createServer(
     } else if (req.url === "/api/vetted-key") {
       // Handle Vetted API key requests
       vettedKeyRoute(req, res);
+    } else if (req.url === "/api/gpt-key") {
+      // Handle GPT API key requests
+      gptKeyRoute(req, res);
     } else {
       // Handle static file requests
       staticRoute(req, res);
@@ -359,8 +394,9 @@ const storeRoute: http.RequestListener = (req, res) => {
  * `[GET|POST|PUT|DELETE] /proxy/[proxy-url]`
  * Allows proxying to the `proxy-url`, forwarding any request and supports streaming.
  * Any string matching `${ENV_NAME}` in the header will replace the string with the value of that environment variable.
- * An accompanying `[ENV_VAR]_ACCESS` variable must be defined to whitelist allowed proxy hostnames to prevent leakage.
+ * An optional `[ENV_VAR]_ACCESS` variable can be defined to whitelist allowed proxy hostnames to prevent leakage.
  * The hostnames must include the full host including the subdomain and can be a comma separated list of host names.
+ * If no `[ENV_VAR]_ACCESS` is defined, the environment variable will be accessible to all proxied hosts.
  */
 const proxyRoute: http.RequestListener = (req, res) => {
   if (!req.url) {

@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# Claude Code notification wrapper
+# Usage: claude-notify <claude-code-command>
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NOTIFY_SCRIPT="$SCRIPT_DIR/notify.sh"
+
+# Create a temporary file to track the last activity
+ACTIVITY_FILE="/tmp/claude_activity_$$"
+echo "$(date +%s)" > "$ACTIVITY_FILE"
+
+# Function to send notification
+send_notification() {
+    if [[ -x "$NOTIFY_SCRIPT" ]]; then
+        bash "$NOTIFY_SCRIPT" "Claude Code is ready for your input!"
+    fi
+}
+
+# Background process to monitor for idle state
+monitor_idle() {
+    local last_activity=$(cat "$ACTIVITY_FILE" 2>/dev/null || echo "0")
+    local idle_threshold=3  # seconds of inactivity before notification
+    
+    while [[ -f "$ACTIVITY_FILE" ]]; do
+        sleep 1
+        local current_time=$(date +%s)
+        local file_time=$(cat "$ACTIVITY_FILE" 2>/dev/null || echo "$current_time")
+        
+        if (( current_time - file_time >= idle_threshold )); then
+            # Check if we're at a prompt (no recent output)
+            send_notification
+            # Update activity to prevent spam notifications
+            echo "$current_time" > "$ACTIVITY_FILE"
+            sleep 10  # Wait 10 seconds before next possible notification
+        fi
+    done
+}
+
+# Start the idle monitor in background
+monitor_idle &
+MONITOR_PID=$!
+
+# Function to update activity timestamp
+update_activity() {
+    echo "$(date +%s)" > "$ACTIVITY_FILE"
+}
+
+# Cleanup function
+cleanup() {
+    kill $MONITOR_PID 2>/dev/null
+    rm -f "$ACTIVITY_FILE"
+}
+
+# Set up cleanup on exit
+trap cleanup EXIT INT TERM
+
+# Run the actual command while monitoring its output
+if [[ $# -gt 0 ]]; then
+    # Monitor stdout and stderr for activity
+    "$@" 2>&1 | while IFS= read -r line; do
+        echo "$line"
+        update_activity
+    done
+    
+    # Command finished, send final notification
+    sleep 1
+    send_notification
+else
+    echo "Usage: $0 <command>"
+    echo "Example: $0 claude"
+    echo "         $0 npm run dev"
+fi
+
+cleanup

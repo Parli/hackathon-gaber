@@ -1,6 +1,6 @@
-# Node Simple Server
+# Vetted Nest
 
-A minimalistic vanilla node.js typescript server for rapid prototyping.
+AI-powered home design studio with product recommendations. Built on a minimalistic vanilla node.js typescript server for rapid prototyping.
 
 ## Prerequisites
 

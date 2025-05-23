@@ -6,7 +6,18 @@
       "Bash(rg:*)",
       "Bash(npm install:*)",
       "Bash(npm uninstall:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(grep:*)",
+      "Bash(/home/gabercek/.claude/local/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg -n \"document.addEventListener\" /mnt/c/Users/gaber/hackathon-gaber/public/main.js)",
+      "Bash(cp:*)",
+      "WebFetch(domain:platform.openai.com)",
+      "Bash(chmod:*)",
+      "Bash(./notify.sh:*)",
+      "Bash(bash:*)",
+      "Bash(dos2unix:*)",
+      "Bash(sed:*)",
+      "Bash(awk:*)"
     ],
     "deny": []
   }

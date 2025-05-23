@@ -1,6 +1,6 @@
 {
-  "name": "simple-server",
-  "description": "A simple zero build dependency vanilla Node.js HTTP server with static serving, proxying, and storage",
+  "name": "vetted-nest",
+  "description": "Vetted Nest - AI-powered home design studio with product recommendations",
   "version": "0.0.0",
   "main": "server.ts",
   "type": "module",
@@ -8,7 +8,8 @@
     "start": "node --loader ts-node/esm server.ts",
     "dev": "node --loader ts-node/esm -r dotenv/config server.ts",
     "deploy": "scripts/deploy.sh",
-    "undeploy": "scripts/undeploy.sh"
+    "undeploy": "scripts/undeploy.sh",
+    "notify": "bash notify.sh"
   },
   "engines": {
     "node": ">=23.6.0"
