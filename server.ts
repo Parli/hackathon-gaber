@@ -224,34 +224,6 @@ const gptKeyRoute: http.RequestListener = (req, res) => {
   }
 };
 
-/**
- * `/api/vetted-key`
- * Returns the Vetted (Lustre) API key for client-side use
- */
-const vettedKeyRoute: http.RequestListener = (req, res) => {
-  try {
-    if (req.method !== "GET") {
-      res.writeHead(405);
-      res.end("Method Not Allowed");
-      return;
-    }
-    
-    const apiKey = process.env["VETTED_API_KEY"];
-    
-    if (!apiKey) {
-      res.writeHead(500);
-      res.end(JSON.stringify({ error: "Vetted API key not configured" }));
-      return;
-    }
-    
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ apiKey }));
-  } catch (error) {
-    console.error("Error in Vetted key route:", error);
-    res.writeHead(500);
-    res.end(JSON.stringify({ error: "Internal server error" }));
-  }
-};
 
 // Environment Variable interpolation helper with trusted host whitelist
 function interpolateEnvVars(value: string, host: string): string {
@@ -308,9 +280,6 @@ const server = http.createServer(
     } else if (req.url === "/api/gemini-key") {
       // Handle Gemini API key requests
       geminiKeyRoute(req, res);
-    } else if (req.url === "/api/vetted-key") {
-      // Handle Vetted API key requests
-      vettedKeyRoute(req, res);
     } else if (req.url === "/api/gpt-key") {
       // Handle GPT API key requests
       gptKeyRoute(req, res);

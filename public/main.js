@@ -3718,15 +3718,7 @@ async function fetchQuery(name, body, options = {}) {
             // IMPORTANT: We're always using the proxy to avoid CORS issues
             const proxyUrl = '/api/proxy/https://research-function.reefpig.com/v3/research/findproducts';
             
-            // Start the server if it's not running
-            try {
-                // Make a simple request to check if the server is up
-                // Use GET method instead of HEAD which might not be supported
-                await fetch('/api/vetted-key', { method: 'GET' });
-            } catch (serverCheckError) {
-                console.error("Server connection check failed:", serverCheckError);
-                throw new Error("Server is not running. Please start the server with 'npm run dev'");
-            }
+            // No server check needed - Vetted APIs don't require authentication
             
             // Define a function to check if an error is retryable
             const isRetryableError = (error) => {
@@ -3824,23 +3816,6 @@ async function fetchQuery(name, body, options = {}) {
     }
 }
 
-async function fetchApiKeyForVetted() {
-    console.log("Fetching Vetted API key from server...");
-    try {
-        const keyResponse = await fetch('/api/vetted-key');
-        if (!keyResponse.ok) {
-            throw new Error(`Failed to get Vetted API key (${keyResponse.status})`);
-        }
-        const { apiKey } = await keyResponse.json();
-        if (!apiKey) {
-            throw new Error("No Vetted API key returned from server");
-        }
-        return apiKey;
-    } catch (error) {
-        console.error("Error fetching Vetted API key:", error);
-        return null;
-    }
-}
 
 async function findProductsWithVettedApi(items) {
     // Create a unique ID for this product search instance
@@ -3855,8 +3830,7 @@ async function findProductsWithVettedApi(items) {
         conversationArea.appendChild(productsContainer);
         conversationArea.scrollTop = conversationArea.scrollHeight;
         
-        // Get API key
-        const apiKey = await fetchApiKeyForVetted();
+        // No API key needed for Vetted APIs
         
         // Process ALL items in parallel (removing artificial batching for better performance)
         const productResults = {};
@@ -3872,8 +3846,6 @@ async function findProductsWithVettedApi(items) {
                         query: item.google_shopping_query,
                         limit: 6,
                         includeOutOfStock: false
-                    }, {
-                        headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : undefined
                     });
                     
                     return {
@@ -5187,14 +5159,7 @@ async function fetchRoundupQuery(name, body, options = {}) {
             // IMPORTANT: We're always using the proxy to avoid CORS issues
             const proxyUrl = '/api/proxy/https://research-function.reefpig.com/v5/research/roundup';
             
-            // Start the server if it's not running
-            try {
-                // Make a simple request to check if the server is up
-                await fetch('/api/vetted-key', { method: 'GET' });
-            } catch (serverCheckError) {
-                console.error("Server connection check failed:", serverCheckError);
-                throw new Error("Server is not running. Please start the server with 'npm run dev'");
-            }
+            // No server check needed - Vetted APIs don't require authentication
             
             // Define a function to check if an error is retryable
             const isRetryableError = (error) => {
