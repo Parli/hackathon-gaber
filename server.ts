@@ -224,6 +224,34 @@ const gptKeyRoute: http.RequestListener = (req, res) => {
   }
 };
 
+/**
+ * `/api/google-lens-key`
+ * Returns the Google Lens API key for client-side use
+ */
+const googleLensKeyRoute: http.RequestListener = (req, res) => {
+  try {
+    if (req.method !== "GET") {
+      res.writeHead(405);
+      res.end("Method Not Allowed");
+      return;
+    }
+    
+    const apiKey = process.env["GOOGLE_LENS_API_KEY"];
+    
+    if (!apiKey) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: "Google Lens API key not configured" }));
+      return;
+    }
+    
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ apiKey }));
+  } catch (error) {
+    console.error("Error in Google Lens key route:", error);
+    res.writeHead(500);
+    res.end(JSON.stringify({ error: "Internal server error" }));
+  }
+};
 
 // Environment Variable interpolation helper with trusted host whitelist
 function interpolateEnvVars(value: string, host: string): string {
@@ -283,6 +311,9 @@ const server = http.createServer(
     } else if (req.url === "/api/gpt-key") {
       // Handle GPT API key requests
       gptKeyRoute(req, res);
+    } else if (req.url === "/api/google-lens-key") {
+      // Handle Google Lens API key requests
+      googleLensKeyRoute(req, res);
     } else {
       // Handle static file requests
       staticRoute(req, res);

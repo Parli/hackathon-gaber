@@ -5264,17 +5264,24 @@ async function findProductsWithGoogleLens(imageUrl, googleLensQuery) {
     try {
         console.log(`Google Lens search: "${googleLensQuery}" with image: ${imageUrl}`);
         
-        // Build the full URL with interpolation placeholder for the proxy to process
+        // Fetch Google Lens API key from server
+        const keyResponse = await fetch('/api/google-lens-key');
+        if (!keyResponse.ok) {
+            throw new Error(`Failed to get Google Lens API key (${keyResponse.status})`);
+        }
+        const { apiKey } = await keyResponse.json();
+        if (!apiKey) {
+            throw new Error("No Google Lens API key returned from server");
+        }
+        
+        // Build the full URL with the actual API key
         const encodedImageUrl = encodeURIComponent(imageUrl);
         const encodedQuery = encodeURIComponent(googleLensQuery);
         
-        // Let the proxy server handle the environment variable interpolation
-        const fullUrl = `https://serpapi.com/search.json?engine=google_lens&url=${encodedImageUrl}&q=${encodedQuery}&api_key=\${GOOGLE_LENS_API_KEY}`;
+        const fullUrl = `https://serpapi.com/search.json?engine=google_lens&url=${encodedImageUrl}&q=${encodedQuery}&api_key=${apiKey}`;
         const proxyUrl = `/api/proxy/${encodeURIComponent(fullUrl)}`;
         
         console.log(`Using proxy to call Google Lens API with URL:`, proxyUrl);
-        
-        // No server check needed - proxy handles the API key interpolation
         
         const response = await fetch(proxyUrl, {
             method: 'GET',
