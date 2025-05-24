@@ -17,7 +17,10 @@
       "Bash(bash:*)",
       "Bash(dos2unix:*)",
       "Bash(sed:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(/home/gabercek/.claude/local/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg -n \"fetchApiKeyForVetted\" public/main.js)",
+      "Bash(/home/gabercek/.claude/local/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg -n \"apiKey\" public/main.js)",
+      "Bash(/home/gabercek/.claude/local/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg -n \"findProductsWithGoogleLens\" public/main.js)"
     ],
     "deny": []
   }

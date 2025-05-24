@@ -1,117 +1,3 @@
-// AI-Powered Home Remodeling Visualization Tool - main.js (Final Cleanup)
-
-/* ================================================================
- * TABLE OF CONTENTS - MAIN.JS FILE STRUCTURE
- * ================================================================
- * 
- * CONFIGURATION & SETUP (Lines 1-380)
- * ├── Import libraries & constants (94-98)
- * ├── LLM Prompts (101-270)
- * │   ├── ORCHESTRATOR_PROMPT (101-151) - Intent-based image generation rules
- * │   ├── IMAGE_SYSTEM_PROMPT (153-210) - Image generation guidelines
- * │   └── ORCHESTRATOR_FUNCTION_DEFINITIONS (272-345) - generateImage, addToImage, findSimilarProducts
- * ├── Generation config (347-355)
- * └── DOM Elements (357-380)
- * 
- * STATE MANAGEMENT (Lines 375-900)
- * ├── imageState object (375-445) - Original/remodeled images, selection logic
- * ├── cartState object (450-750) - Shopping cart with add/remove/quantity management
- * ├── conversationManager object (755-810) - Message history and API formatting
- * └── visionModeState object (815-900) - Pro/Fast mode toggle and persistence
- * 
- * UI FUNCTIONS (Lines 905-1430)
- * ├── Welcome message functions (905-1050) - Initial UI setup and instructions
- * ├── File upload & paste logic (1055-1220) - Image upload, drag-drop, clipboard
- * ├── Image display & selection (1225-1400) - Gallery rendering, version management
- * └── Image selection handlers (1405-1430) - "Edit This Design", "Start from Scratch"
- * 
- * API INTEGRATION (Lines 1435-2370)
- * ├── Core API functions (1435-1630)
- * │   ├── getApiKey() (1435) - Secure API key retrieval
- * │   ├── buildImageGenerationRequestBody() (1455) - Gemini image generation requests
- * │   ├── buildOrchestratorRequestBody() (1485) - Function calling setup
- * │   └── formatHistoryForOrchestrator() (1528) - Conversation history formatting
- * ├── Response parsing (1635-1740)
- * │   ├── parseImageModelResponse() (1635) - Image extraction from API responses
- * │   └── parseOrchestratorResponse() (1695) - Function call detection and routing
- * ├── Gemini API integration (1745-2080)
- * │   ├── callOrchestratorModel() (1745) - Main orchestrator with Pro/Fast routing
- * │   ├── callGeminiOrchestrator() (1825) - Gemini-specific orchestrator calls
- * │   ├── callImageGenerationModel() (1920) - Image generation with fallbacks
- * │   └── callGeminiImageGeneration() (1980) - Gemini image generation
- * └── GPT API integration (2085-2370)
- *     ├── fetchGptApiKey() (2085) - OpenAI API key management
- *     ├── callGptImageGeneration() (2150) - GPT Vision image generation
- *     └── callGptOrchestrator() (2275) - GPT function calling (Pro mode)
- * 
- * FUNCTION HANDLERS (Lines 2375-2650)
- * ├── generateImage handler (2375-2420) - Image generation with state management
- * ├── addToImage handler (2425-2580) - Product integration into room designs
- * ├── findSimilarProducts handler (2585-2650) - Brand searches and product discovery
- * └── processQueryWithOrchestrator() (2655) - Main query processing pipeline
- * 
- * CHAT & UI HANDLING (Lines 2655-3150)
- * ├── validateChatInputs() (2655) - Input validation and error handling
- * ├── prepareUserMessageForApi() (2750) - Message formatting for APIs
- * ├── handleApiError() (2850) - Error processing and user feedback
- * ├── addMessageToConversation() (2950) - Chat message rendering
- * └── submitMessage() (3050) - Main submission pipeline
- * 
- * IMAGE ANALYSIS & PRODUCT SEARCH (Lines 3155-3750)
- * ├── analyzeImageForProducts() (3155) - LLM-powered image analysis for product discovery
- * ├── withRetry() (3450) - Exponential backoff retry mechanism
- * └── findProductsWithAllApis() (3650) - Unified API orchestration (Vetted + Roundup + Google Lens)
- * 
- * PRODUCT API INTEGRATIONS (Lines 3755-5150)
- * ├── Vetted API (3755-3950)
- * │   ├── fetchApiKeyForVetted() (3755) - API key management
- * │   ├── findProductsWithVettedApi() (3820) - Product search with retry logic
- * │   └── Connection validation (3900) - Server connectivity checks
- * ├── Roundup API (3955-4250)
- * │   ├── findProductsWithRoundupApi() (3955) - Expert product recommendations
- * │   └── fetchRoundupQuery() (4150) - Query optimization
- * ├── Google Lens API (4255-4450)
- * │   └── findProductsWithGoogleLens() (4255) - Visual similarity search
- * ├── Visual filtering (4455-4750)
- * │   ├── filterProductsBatch() (4455) - Parallel LLM-based product filtering
- * │   └── filterProductResults() (4650) - Batch processing with performance optimization
- * └── Brand filtering (4755-5150)
- *     ├── filterProductsByBrand() (4755) - LLM-powered brand verification
- *     └── findProductsWithBrandFiltering() (4950) - Brand-specific product search
- * 
- * BRAND ANALYSIS & DISPLAY (Lines 5155-5950)
- * ├── getBroadCategory() (5155) - Product categorization
- * ├── analyzeBrandReputation() (5250) - LLM-based brand quality assessment
- * ├── brandReputation() (5450) - Brand reputation analysis with conservative criteria
- * ├── updateProductCardWithBrandIcon() (5650) - Vetted brand icon management
- * ├── displayProductRecommendations() (5750) - Product grid rendering with shopping cart integration
- * └── createProductCard() (5850) - Individual product card creation with cart/wishlist buttons
- * 
- * "MORE LIKE THIS" FUNCTIONALITY (Lines 5955-6450)
- * ├── "More Like This" modal system (5955-6050) - Style/Color/Brand search options
- * ├── Search type handlers (6055-6350)
- * │   ├── Style search (6055-6150) - Style keyword extraction and Google Lens integration
- * │   ├── Color search (6155-6250) - LLM-powered color detection and visual analysis
- * │   └── Brand search (6255-6350) - Orchestrator-based brand extraction with function parameters
- * ├── Product data extraction helpers (6355-6450)
- * │   ├── extractProductCategory() (6355) - Product type identification
- * │   ├── extractStyleKeywords() (6380) - Style classification
- * │   ├── extractCharacteristics() (6405) - Physical attributes
- * │   └── extractColor() (6430) - Color keyword extraction
- * └── Search execution and error handling (6455-6500) - Unified search pipeline
- * 
- * VISION MODE CONTROLS (Lines 6505-6650)
- * ├── Pro/Fast toggle implementation (6505-6580) - Vision mode switching with localStorage
- * ├── Pro mode warning dialog (6585-6620) - User consent and cost notification
- * └── Quality selector integration (6625-6650) - Detail level configuration
- * 
- * EVENT LISTENERS & INITIALIZATION (Lines 6655-6750)
- * ├── Vision controls setup (6655-6700) - Toggle and quality selector event handlers
- * ├── Cart button functionality (6705-6725) - Shopping cart UI interactions
- * └── Page load initialization (6730-6750) - DOM ready and welcome message display
- * 
- * ================================================================ */
-
 // Import required libraries
 import { marked } from "https://cdn.jsdelivr.net/npm/marked@15.0.11/+esm";
 
@@ -3925,7 +3811,7 @@ async function findProductsWithBothApis(items) {
         conversationArea.scrollTop = conversationArea.scrollHeight;
         
         // Get API key once
-        const apiKey = await fetchApiKeyForVetted();
+        // No API key needed
         
         // Create ALL API calls at once - fully parallel
         const allApiCalls = [];
@@ -3950,8 +3836,6 @@ async function findProductsWithBothApis(items) {
             const vettedCall = fetchQuery("findProducts", {
                 query: item.google_shopping_query,
                 includeOutOfStock: false
-            }, {
-                headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : undefined
             }).then(results => {
                 // Process vetted results immediately when they arrive
                 if (results && results.length > 0) {
@@ -4064,7 +3948,7 @@ async function findProductsWithAllApis(items) {
         conversationArea.scrollTop = conversationArea.scrollHeight;
         
         // Get API key once
-        const apiKey = await fetchApiKeyForVetted();
+        // No API key needed
         
         // Create ALL API calls at once - fully parallel
         const allApiCalls = [];
@@ -4090,8 +3974,6 @@ async function findProductsWithAllApis(items) {
             const vettedCall = fetchQuery("findProducts", {
                 query: item.google_shopping_query,
                 includeOutOfStock: false
-            }, {
-                headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : undefined
             }).then(results => {
                 // Process vetted results immediately when they arrive
                 if (results && results.length > 0) {
@@ -4592,7 +4474,7 @@ async function findProductsWithBrandFiltering(items, targetBrand, targetCategory
         conversationArea.scrollTop = conversationArea.scrollHeight;
         
         // Get API key once
-        const apiKey = await fetchApiKeyForVetted();
+        // No API key needed
         
         // Create ALL API calls at once - fully parallel (but skip Google Lens for brand searches)
         const allApiCalls = [];
@@ -4617,8 +4499,6 @@ async function findProductsWithBrandFiltering(items, targetBrand, targetCategory
             const vettedCall = fetchQuery("findProducts", {
                 query: item.google_shopping_query,
                 includeOutOfStock: false
-            }, {
-                headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : undefined
             }).then(results => {
                 // Process vetted results immediately when they arrive
                 if (results && results.length > 0) {
@@ -5394,13 +5274,7 @@ async function findProductsWithGoogleLens(imageUrl, googleLensQuery) {
         
         console.log(`Using proxy to call Google Lens API with URL:`, proxyUrl);
         
-        // Check server connection
-        try {
-            await fetch('/api/vetted-key', { method: 'GET' });
-        } catch (serverCheckError) {
-            console.error("Server connection check failed:", serverCheckError);
-            throw new Error("Server is not running. Please start the server with 'npm run dev'");
-        }
+        // No server check needed - proxy handles the API key interpolation
         
         const response = await fetch(proxyUrl, {
             method: 'GET',
